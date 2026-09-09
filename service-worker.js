@@ -1,5 +1,5 @@
-const CACHE_NAME = "about-my-day-v18";
-const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json"];
+const CACHE_NAME = "todays-journal-v19";
+const APP_FILES = ["./index.html", "./styles.css?v=19", "./app.js?v=19", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_FILES)));
@@ -17,7 +17,16 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
   );
 });
