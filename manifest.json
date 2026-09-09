@@ -1,6 +1,6 @@
 {
-  "name": "About My Day",
-  "short_name": "My Day",
+  "name": "Today's Journal",
+  "short_name": "Journal",
   "description": "A simple daily care journal for school and home.",
   "start_url": "./",
   "display": "standalone",

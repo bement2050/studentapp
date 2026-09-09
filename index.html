@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#1d4e43" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>About My Day</title>
+    <title>Today's Journal</title>
     <link rel="manifest" href="manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,7 +22,7 @@
         <div class="brand-mark" aria-hidden="true">☀</div>
         <div class="hero-copy">
           <p class="kicker">Daily care journal</p>
-          <h1>About My Day</h1>
+          <h1>Today's Journal</h1>
           <p class="hero-subtitle">A simple, calm way to capture the moments that matter.</p>
         </div>
         <div class="global-clock" aria-label="Current local date and time">
@@ -36,7 +36,13 @@
         </div>
       </header>
 
-      <section class="panel meta-panel" aria-labelledby="day-details-heading">
+      <nav class="app-tabs" aria-label="Journal sections">
+        <a class="app-tab is-active" href="#todayEntry">Today's entry</a>
+        <a class="app-tab" href="#historyPanel">Past days</a>
+        <button id="printTabBtn" class="app-tab app-tab-print" type="button">Print</button>
+      </nav>
+
+      <section id="todayEntry" class="panel meta-panel" aria-labelledby="day-details-heading">
         <div class="section-intro">
           <p class="eyebrow">01 · The basics</p>
           <h2 id="day-details-heading">Day details</h2>
@@ -108,7 +114,7 @@
 
       <section id="blocksContainer" class="blocks" aria-live="polite"></section>
 
-      <section class="panel history-panel">
+      <section id="historyPanel" class="panel history-panel">
         <div class="history-heading">
           <div>
             <p class="eyebrow">03 · Look back</p>
@@ -131,14 +137,14 @@
       </section>
 
       <footer class="print-footer">
-        <span>About My Day · Plano ISD</span>
+        <span>Today's Journal · Plano ISD</span>
         <span id="printDate"></span>
       </footer>
     </main>
 
     <section id="paperPrintSheet" class="paper-print-sheet" aria-hidden="true">
       <header class="paper-sheet-header">
-        <div class="paper-sheet-title">About My Day</div>
+        <div class="paper-sheet-title">Today's Journal</div>
         <div class="paper-name-box"><strong>Name:</strong> <span id="paperStudentName"></span></div>
       </header>
       <div class="paper-sheet-meta">
@@ -212,7 +218,7 @@
 
     <div class="mobile-save-bar">
       <div>
-        <strong>About My Day</strong>
+        <strong>Today's Journal</strong>
         <span id="mobileSaveStatus">Autosave is on</span>
       </div>
       <button id="mobileSaveBtn" class="btn btn-primary" type="button">Save now</button>

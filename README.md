@@ -1,6 +1,6 @@
-# About My Day Web App
+# Today's Journal Web App
 
-This is a lightweight web app version of your paper "About My Day" sheet.
+This is a lightweight web app version of your paper "About My Day" sheet, named "Today's Journal" for everyday use.
 It stores data in the browser (local storage), so there are no server costs.
 
 ## Features
@@ -19,6 +19,7 @@ It stores data in the browser (local storage), so there are no server costs.
 - Camera/photo attachments for every check-in (up to 8 per section)
 - Searchable past-day archive with month filtering, reopening, editing, and individual deletion
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
+- Prominent Today, Past days, and Print tabs on phone and desktop
 - Automatic localized date/time with the device's global IANA timezone
 
 ## Run Locally
