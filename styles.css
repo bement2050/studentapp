@@ -335,7 +335,7 @@ button:focus-visible {
 
 .date-navigator {
   display: grid;
-  grid-template-columns: auto minmax(170px, 1fr) auto auto;
+  grid-template-columns: auto minmax(155px, 1fr) minmax(155px, 1fr) auto auto;
   align-items: end;
   gap: .55rem;
   padding: .55rem;
@@ -359,14 +359,16 @@ button:focus-visible {
   background: var(--soft-green);
 }
 
-.month-jump {
+.month-jump,
+.date-jump {
   grid-template-columns: auto minmax(130px, 190px);
   align-items: center;
   justify-content: center;
   font-size: .78rem;
 }
 
-.month-jump input {
+.month-jump input,
+.date-jump input {
   min-height: 44px;
   padding: .45rem .6rem;
   border: 1px solid #adc4ba;
@@ -919,10 +921,18 @@ fieldset label input:checked + span {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .month-jump {
+  .month-jump,
+  .date-jump {
     grid-column: 1 / -1;
-    grid-row: 1;
     grid-template-columns: auto 1fr;
+  }
+
+  .month-jump {
+    grid-row: 1;
+  }
+
+  .date-jump {
+    grid-row: 2;
   }
 
   .date-nav-btn {

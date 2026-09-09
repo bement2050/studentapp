@@ -5,7 +5,7 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 
 ## Features
 
-- Daily form with 4 check-in blocks (Morning, Afternoon, Evening, End of day)
+- Daily form with 2 check-in blocks (Morning and Afternoon)
 - Eight emotions with multi-select, plus activities, notes, speech, and O.T.
 - Save and load history from any device using the app link
 - Export all saved entries to JSON

@@ -4,9 +4,7 @@ const DEFAULT_STAFF_INITIALS = "JK";
 const USER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const BLOCK_TITLES = [
   "Morning",
-  "Afternoon",
-  "Evening",
-  "End of day"
+  "Afternoon"
 ];
 
 // Adopted Plano ISD 2026-27 academic calendar (updated April 20, 2026).
@@ -47,6 +45,7 @@ const previousDayBtn = document.getElementById("previousDayBtn");
 const nextDayBtn = document.getElementById("nextDayBtn");
 const todayBtn = document.getElementById("todayBtn");
 const monthJump = document.getElementById("monthJump");
+const dateJump = document.getElementById("dateJump");
 const blocksContainer = document.getElementById("blocksContainer");
 const historyList = document.getElementById("historyList");
 const syncStatus = document.getElementById("syncStatus");
@@ -611,6 +610,7 @@ function writeForm(entry) {
   entryDateInput.value = entry.date || todayISO();
   activeDate = entryDateInput.value;
   monthJump.value = activeDate.slice(0, 7);
+  dateJump.value = activeDate;
   entryTimeInput.value = entry.entryTime || entry.blocks?.[0]?.entryTime || currentTimeISO();
   staffInitialsInput.value = entry.staffInitials || "";
 
@@ -654,6 +654,7 @@ function clearForm(keepHeader = false) {
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
   monthJump.value = activeDate.slice(0, 7);
+  dateJump.value = activeDate;
   entryTimeInput.value = currentTimeISO();
 
   document.querySelectorAll(".day-block .mood-row input").forEach((input) => {
@@ -741,6 +742,7 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
   entryDateInput.value = targetDate;
   activeDate = targetDate;
   monthJump.value = targetDate.slice(0, 7);
+  dateJump.value = targetDate;
   entryTimeInput.value = currentTimeISO();
   await loadPhotosForEntry(entryId);
   const holiday = calendarEventFor(targetDate);
@@ -810,6 +812,7 @@ function applyRememberedDetails() {
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
   monthJump.value = activeDate.slice(0, 7);
+  dateJump.value = activeDate;
   entryTimeInput.value = currentTimeISO();
 }
 
@@ -1209,12 +1212,13 @@ previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -
 nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
 monthJump.addEventListener("change", () => jumpToMonth(monthJump.value));
+dateJump.addEventListener("change", () => openDate(dateJump.value));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
-  if (!event.target.matches("#entryDate, #monthJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
+  if (!event.target.matches("#entryDate, #monthJump, #dateJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
 });
 document.querySelector(".app-shell").addEventListener("change", (event) => {
-  if (!event.target.matches(".photo-input, #entryDate, #monthJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
+  if (!event.target.matches(".photo-input, #entryDate, #monthJump, #dateJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
 });
 blocksContainer.addEventListener("change", (event) => {
   if (event.target.matches(".photo-input")) addSelectedPhotos(event.target);
