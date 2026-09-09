@@ -556,11 +556,10 @@ function createBlocks() {
     badge.textContent = String(index + 1).padStart(2, "0");
     textArea.maxLength = 500;
 
-    const radios = clone.querySelectorAll('input[type="radio"]');
-    radios.forEach((radio) => {
-      radio.name = `mood-${index}`;
-      radio.id = `${radio.value}-${index}`;
-      radio.closest("label").setAttribute("for", radio.id);
+    const moodInputs = clone.querySelectorAll(".mood-row input");
+    moodInputs.forEach((input) => {
+      input.id = `${input.value}-${index}`;
+      input.closest("label").setAttribute("for", input.id);
     });
 
     article.dataset.blockIndex = String(index);
@@ -570,14 +569,17 @@ function createBlocks() {
 
 function readCurrentForm() {
   const blocks = [...document.querySelectorAll(".day-block")].map((block) => {
-    const selectedMood = block.querySelector('input[type="radio"]:checked');
+    const selectedMoods = [
+      ...block.querySelectorAll(".mood-row input:checked")
+    ].map((input) => input.value);
     const checkedActivities = [
       ...block.querySelectorAll('.activity-row input[type="checkbox"]:checked')
     ];
 
     return {
       title: block.querySelector(".block-title").textContent,
-      mood: selectedMood ? selectedMood.value : "",
+      mood: selectedMoods[0] || "",
+      moods: selectedMoods,
       activities: checkedActivities.map((item) => item.value),
       notes: block.querySelector("textarea").value.trim(),
       speech: block.querySelector(".speech").checked,
@@ -619,11 +621,11 @@ function writeForm(entry) {
       return;
     }
 
-    const moodValue = ({ calm: "silly", upset: "mad" })[block.mood] || block.mood;
-    const moodRadio = element.querySelector(`input[type="radio"][value="${moodValue}"]`);
-    if (moodRadio) {
-      moodRadio.checked = true;
-    }
+    const legacyMood = ({ upset: "mad" })[block.mood] || block.mood;
+    const moodValues = block.moods?.length ? block.moods : [legacyMood].filter(Boolean);
+    element.querySelectorAll(".mood-row input").forEach((input) => {
+      input.checked = moodValues.includes(input.value);
+    });
 
     const activityChecks = element.querySelectorAll('.activity-row input[type="checkbox"]');
     activityChecks.forEach((check) => {
@@ -654,8 +656,8 @@ function clearForm(keepHeader = false) {
   monthJump.value = activeDate.slice(0, 7);
   entryTimeInput.value = currentTimeISO();
 
-  document.querySelectorAll('.day-block input[type="radio"]').forEach((radio) => {
-    radio.checked = false;
+  document.querySelectorAll(".day-block .mood-row input").forEach((input) => {
+    input.checked = false;
   });
 
   document.querySelectorAll('.day-block input[type="checkbox"]').forEach((check) => {
@@ -680,7 +682,7 @@ function updateFormProgress() {
   blocks.forEach((block) => {
     const note = block.querySelector("textarea");
     const hasContent = Boolean(
-      block.querySelector('input[type="radio"]:checked')
+      block.querySelector(".mood-row input:checked")
       || block.querySelector('input[type="checkbox"]:checked')
       || note.value.trim()
     );
@@ -697,7 +699,7 @@ function updateFormProgress() {
 
 function formHasMeaningfulContent() {
   return [...document.querySelectorAll(".day-block")].some((block) =>
-    block.querySelector('input[type="radio"]:checked')
+    block.querySelector(".mood-row input:checked")
     || block.querySelector('input[type="checkbox"]:checked')
     || block.querySelector("textarea").value.trim()
     || block.querySelector(".photo-item")
@@ -867,10 +869,10 @@ async function copyLastDay() {
 
 function sampleEntry() {
   const sampleBlocks = [
-    ["happy", ["music"], "Arrived smiling and joined morning circle right away.", true, false],
-    ["silly", ["art", "sensory"], "Enjoyed painting and took a short sensory break before lunch.", false, true],
-    ["happy", ["sports"], "Played outside and practiced taking turns with friends.", false, false],
-    ["silly", ["music"], "Packed up independently and had a calm trip home.", false, false]
+    [["happy", "excited"], ["music"], "Arrived smiling and joined morning circle right away.", true, false],
+    [["silly", "calm"], ["art", "sensory"], "Enjoyed painting and took a short sensory break before lunch.", false, true],
+    [["happy", "tired"], ["sports"], "Played outside and practiced taking turns with friends.", false, false],
+    [["calm"], ["music"], "Packed up independently and had a calm trip home.", false, false]
   ];
 
   return {
@@ -883,7 +885,8 @@ function sampleEntry() {
     updatedAt: new Date().toISOString(),
     blocks: BLOCK_TITLES.map((title, index) => ({
       title,
-      mood: sampleBlocks[index][0],
+      mood: sampleBlocks[index][0][0],
+      moods: sampleBlocks[index][0],
       activities: sampleBlocks[index][1],
       notes: sampleBlocks[index][2],
       speech: sampleBlocks[index][3],
@@ -942,6 +945,7 @@ async function renderHistory() {
       ...(entry.blocks || []).flatMap((block) => [
         block.title,
         block.mood,
+        ...(block.moods || []),
         ...(block.activities || []),
         block.notes
       ])
@@ -981,7 +985,7 @@ async function renderHistory() {
     const actions = document.createElement("div");
     const date = new Date(`${entry.date}T12:00:00`);
     const started = (entry.blocks || []).filter((block) =>
-      block.mood || block.notes || block.speech || block.ot || block.activities?.length
+      block.mood || block.moods?.length || block.notes || block.speech || block.ot || block.activities?.length
     ).length;
     dateBadge.className = "history-date-badge";
     dateBadge.dateTime = entry.date;
@@ -1102,7 +1106,11 @@ function preparePrintLayout() {
     { value: "happy", face: "😀", label: "happy" },
     { value: "sad", face: "😢", label: "sad" },
     { value: "silly", face: "😜", label: "silly" },
-    { value: "mad", face: "😠", label: "mad" }
+    { value: "mad", face: "😠", label: "mad" },
+    { value: "calm", face: "😌", label: "calm" },
+    { value: "excited", face: "🤩", label: "excited" },
+    { value: "tired", face: "😴", label: "tired" },
+    { value: "worried", face: "😟", label: "worried" }
   ];
   const activities = [
     { value: "art", icon: "🎨", label: "art" },
@@ -1127,14 +1135,15 @@ function preparePrintLayout() {
     timeLabel.className = "paper-time-label";
     timeLabel.textContent = block.title;
     moodPanel.className = "paper-mood-panel";
-    moodTitle.textContent = "Mood";
+    moodTitle.textContent = "Emotions";
     moodChoices.className = "paper-mood-choices";
-    const selectedMood = ({ calm: "silly", upset: "mad" })[block.mood] || block.mood;
+    const legacyMood = ({ upset: "mad" })[block.mood] || block.mood;
+    const selectedMoods = new Set(block.moods?.length ? block.moods : [legacyMood].filter(Boolean));
     moods.forEach((mood) => {
       const choice = document.createElement("div");
       const face = document.createElement("span");
       const label = document.createElement("small");
-      choice.className = `paper-mood-choice${selectedMood === mood.value ? " is-selected" : ""}`;
+      choice.className = `paper-mood-choice${selectedMoods.has(mood.value) ? " is-selected" : ""}`;
       face.textContent = mood.face;
       label.textContent = mood.label;
       choice.append(face, label);

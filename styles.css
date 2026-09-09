@@ -495,6 +495,13 @@ fieldset label,
   font-weight: 600;
 }
 
+legend small {
+  margin-left: .35rem;
+  color: var(--muted);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
 .day-block.has-content {
   border-color: #9dc9b9;
 }
