@@ -1,21 +1,21 @@
 # Today's Journal Web App
 
 This is a lightweight web app version of your paper "About My Day" sheet, named "Today's Journal" for everyday use.
-It stores data in the browser (local storage), so there are no server costs.
+Journal entries and photos are stored centrally in a private Supabase project.
 
 ## Features
 
 - Daily form with 4 check-in blocks (Morning, Afternoon, Evening, End of day)
 - Mood, activities, notes, speech, and O.T.
-- Save and load history from the same browser
+- Save and load history from any signed-in device
 - Export all saved entries to JSON
-- Automatic draft saving and recovery
+- Automatic saving to private cloud storage
 - Remembers the last child name and staff initials
 - Plano ISD 2026-27 holiday, break, and early-release notices
 - Previous/next day controls plus a month picker for quickly reviewing saved days
 - Compact upcoming-holiday banner and automatic "No school" entries on closure days
 - Phone-friendly controls and a fixed mobile save button
-- Offline support after the first visit
+- Email-link authentication restricted to the authorized journal user
 - Camera/photo attachments for every check-in (up to 8 per section)
 - Searchable past-day archive with month filtering, reopening, editing, and individual deletion
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
@@ -48,12 +48,12 @@ Then visit `http://localhost:4173`. Use **Fill sample** to preview a completed d
 6. Your app URL will look like:
    `https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME/`
 
-## Notes About Shared Use
+## Notes About Central Storage
 
-- Local storage means data is saved per browser/device. The built-in sample is never saved unless you click **Save day**.
-- Photos are resized before being stored in the browser's device database. JSON export includes the photos as embedded data so the backup is complete.
-- If all 3 users share one device/browser, this is perfect.
-- If each person uses a different device and you want shared live data, the next step is adding Firebase/Supabase.
+- Entries and photos are stored in Supabase, not in browser storage or the GitHub repository.
+- Photos are resized before secure upload. JSON export includes the photos as embedded data so the backup is complete.
+- Supabase keeps the login session on the device so the authorized user can remain signed in.
+- The app requires an internet connection to read or save journal data.
 
 ## Supabase Central Storage Setup
 

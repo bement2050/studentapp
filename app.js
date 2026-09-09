@@ -1,8 +1,3 @@
-const STORAGE_KEY = "about-my-day-entries-v1";
-const DRAFT_KEY = "about-my-day-draft-v1";
-const PREFS_KEY = "about-my-day-preferences-v1";
-const PHOTO_DB_NAME = "about-my-day-photos";
-const PHOTO_STORE_NAME = "photos";
 const MAX_PHOTOS_PER_BLOCK = 8;
 const DEFAULT_CHILD_NAME = "Sammy";
 const DEFAULT_STAFF_INITIALS = "JK";
@@ -36,9 +31,16 @@ const PISD_CALENDAR = [
 
 const APP_CONFIG = {
   projectId: "sam-about-my-day",
-  supabaseUrl: "PASTE_SUPABASE_URL_HERE",
-  supabaseAnonKey: "PASTE_SUPABASE_ANON_KEY_HERE"
+  supabaseUrl: "https://voanpatamwilfdwppleu.supabase.co",
+  supabaseAnonKey: "sb_publishable_uDAkRERB3dCTfhh-_hl6sQ_Btddu68C",
+  authorizedEmail: "bemnetgizachew@gmail.com",
+  photoBucket: "journal-photos"
 };
+
+const authGate = document.getElementById("authGate");
+const authForm = document.getElementById("authForm");
+const authEmail = document.getElementById("authEmail");
+const authStatus = document.getElementById("authStatus");
 
 const childNameInput = document.getElementById("childName");
 const entryDateInput = document.getElementById("entryDate");
@@ -84,14 +86,15 @@ const exportBtn = document.getElementById("exportBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const mobileSaveBtn = document.getElementById("mobileSaveBtn");
 const copyLastBtn = document.getElementById("copyLastBtn");
+const signOutBtn = document.getElementById("signOutBtn");
 
 const blockTemplate = document.getElementById("blockTemplate");
 
-let dataBackend = "local";
+let dataBackend = "initializing";
 let supabaseClient = null;
+let currentUser = null;
 let autoSaveTimer = null;
 let isHydrating = false;
-let photoDatabasePromise = null;
 let currentPhotoEntryId = null;
 let activeDate = todayISO();
 const previewUrls = new Set();
@@ -124,91 +127,113 @@ function updateGlobalClock() {
   entryTimeZone.textContent = zoneName || USER_TIME_ZONE;
 }
 
-function readJSON(key, fallback) {
-  try {
-    return JSON.parse(localStorage.getItem(key)) ?? fallback;
-  } catch {
-    return fallback;
+function ensureCloudSession() {
+  if (!supabaseClient || !currentUser) {
+    throw new Error("Sign in is required");
   }
 }
 
-function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+async function signedPhotoRecord(row, blob = null) {
+  const { data, error } = await supabaseClient.storage
+    .from(APP_CONFIG.photoBucket)
+    .createSignedUrl(row.storage_path, 3600);
+  if (error) throw error;
+  return {
+    id: row.id,
+    entryId: row.entry_id,
+    blockIndex: row.block_index,
+    storagePath: row.storage_path,
+    name: row.original_name,
+    createdAt: row.created_at,
+    url: data.signedUrl,
+    blob
+  };
 }
 
-function openPhotoDatabase() {
-  if (photoDatabasePromise) return photoDatabasePromise;
+async function savePhotoRecord(record) {
+  ensureCloudSession();
+  const storagePath = `${currentUser.id}/${record.id}.jpg`;
+  const { error: uploadError } = await supabaseClient.storage
+    .from(APP_CONFIG.photoBucket)
+    .upload(storagePath, record.blob, {
+      contentType: "image/jpeg",
+      upsert: false
+    });
+  if (uploadError) throw uploadError;
 
-  photoDatabasePromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(PHOTO_DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const store = request.result.createObjectStore(PHOTO_STORE_NAME, { keyPath: "id" });
-      store.createIndex("entryId", "entryId", { unique: false });
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-
-  return photoDatabasePromise;
-}
-
-async function photoStore(mode, operation) {
-  const database = await openPhotoDatabase();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(PHOTO_STORE_NAME, mode);
-    const store = transaction.objectStore(PHOTO_STORE_NAME);
-    let result;
-    transaction.oncomplete = () => resolve(result);
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(transaction.error);
-    result = operation(store);
-  });
-}
-
-function savePhotoRecord(record) {
-  return photoStore("readwrite", (store) => store.put(record));
+  const row = {
+    id: record.id,
+    owner_id: currentUser.id,
+    entry_id: record.entryId,
+    block_index: record.blockIndex,
+    storage_path: storagePath,
+    original_name: record.name,
+    created_at: record.createdAt
+  };
+  const { error: metadataError } = await supabaseClient
+    .from("about_my_day_photos")
+    .insert(row);
+  if (metadataError) {
+    await supabaseClient.storage.from(APP_CONFIG.photoBucket).remove([storagePath]);
+    throw metadataError;
+  }
+  return { ...record, storagePath };
 }
 
 async function getPhotoRecords(entryId) {
-  const database = await openPhotoDatabase();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(PHOTO_STORE_NAME, "readonly");
-    const request = transaction.objectStore(PHOTO_STORE_NAME).index("entryId").getAll(entryId);
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
-  });
+  ensureCloudSession();
+  const { data, error } = await supabaseClient
+    .from("about_my_day_photos")
+    .select("id, entry_id, block_index, storage_path, original_name, created_at")
+    .eq("entry_id", entryId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return Promise.all((data || []).map((row) => signedPhotoRecord(row)));
 }
 
-function deletePhotoRecord(id) {
-  return photoStore("readwrite", (store) => store.delete(id));
+async function deletePhotoRecord(id) {
+  ensureCloudSession();
+  const { data: row, error: readError } = await supabaseClient
+    .from("about_my_day_photos")
+    .select("storage_path")
+    .eq("id", id)
+    .single();
+  if (readError) throw readError;
+  const { error: storageError } = await supabaseClient.storage
+    .from(APP_CONFIG.photoBucket)
+    .remove([row.storage_path]);
+  if (storageError) throw storageError;
+  const { error } = await supabaseClient
+    .from("about_my_day_photos")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
 }
 
 async function getAllPhotoRecords() {
-  const database = await openPhotoDatabase();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(PHOTO_STORE_NAME, "readonly");
-    const request = transaction.objectStore(PHOTO_STORE_NAME).getAll();
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
-  });
+  ensureCloudSession();
+  const { data, error } = await supabaseClient
+    .from("about_my_day_photos")
+    .select("id, entry_id, block_index, storage_path, original_name, created_at")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return Promise.all((data || []).map(async (row) => {
+    const { data: blob, error: downloadError } = await supabaseClient.storage
+      .from(APP_CONFIG.photoBucket)
+      .download(row.storage_path);
+    if (downloadError) throw downloadError;
+    return signedPhotoRecord(row, blob);
+  }));
 }
 
 async function movePhotoRecords(fromEntryId, toEntryId) {
   if (!fromEntryId || fromEntryId === toEntryId) return;
-  const records = await getPhotoRecords(fromEntryId);
-  await Promise.all(records.map((record) => savePhotoRecord({ ...record, entryId: toEntryId })));
-}
-
-function getEntries() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function setEntries(entries) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  ensureCloudSession();
+  const { error } = await supabaseClient
+    .from("about_my_day_photos")
+    .update({ entry_id: toEntryId })
+    .eq("entry_id", fromEntryId);
+  if (error) throw error;
 }
 
 function setStatus(message) {
@@ -289,7 +314,7 @@ function updatePhotoCounts() {
     const total = block.querySelectorAll(".photo-item").length;
     block.querySelector(".photo-section").classList.toggle("has-photos", total > 0);
     block.querySelector(".photo-count").textContent =
-      `${total} added · saved on this device`;
+      `${total} added · saved securely in the cloud`;
   });
 }
 
@@ -310,9 +335,10 @@ function renderPhotoRecord(record) {
   const link = document.createElement("a");
   const image = document.createElement("img");
   const remove = document.createElement("button");
-  const url = URL.createObjectURL(record.blob);
+  const isObjectUrl = Boolean(record.blob);
+  const url = record.url || URL.createObjectURL(record.blob);
 
-  previewUrls.add(url);
+  if (isObjectUrl) previewUrls.add(url);
   figure.className = "photo-item";
   figure.dataset.photoId = record.id;
   link.href = url;
@@ -329,8 +355,10 @@ function renderPhotoRecord(record) {
   remove.addEventListener("click", async () => {
     if (!confirm("Remove this photo from the day?")) return;
     await deletePhotoRecord(record.id);
-    URL.revokeObjectURL(url);
-    previewUrls.delete(url);
+    if (isObjectUrl) {
+      URL.revokeObjectURL(url);
+      previewUrls.delete(url);
+    }
     figure.remove();
     updatePhotoCounts();
     setStatus("Photo removed");
@@ -354,7 +382,7 @@ async function loadPhotosForEntry(entryId) {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .forEach(renderPhotoRecord);
   } catch {
-    setStatus("Photos could not be opened on this device");
+    setStatus("Cloud photos could not be loaded");
   }
 }
 
@@ -395,15 +423,15 @@ async function addSelectedPhotos(input) {
         name: file.name,
         createdAt: new Date().toISOString()
       };
-      await savePhotoRecord(record);
-      renderPhotoRecord(record);
+      const savedRecord = await savePhotoRecord(record);
+      renderPhotoRecord(savedRecord);
     }
     const skipped = files.length - selected.length;
     setStatus(skipped
       ? `Photos added; ${skipped} skipped because this check-in is full`
       : `✓ ${selected.length} ${selected.length === 1 ? "photo" : "photos"} added`);
-  } catch {
-    setStatus("Photo could not be saved — check available device storage");
+  } catch (error) {
+    setStatus(`Photo could not be saved to the cloud: ${error.message}`);
   }
 }
 
@@ -442,22 +470,36 @@ function hasSupabaseConfig() {
 }
 
 async function initBackend() {
-  if (!hasSupabaseConfig()) {
-    dataBackend = "local";
-    setStatus("● Saved privately on this device");
-    return;
-  }
-
   try {
     await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
   } catch {
-    dataBackend = "local";
-    setStatus("● Offline — saving on this device");
-    return;
+    authStatus.textContent = "Could not reach secure storage. Check the internet connection and reload.";
+    return false;
   }
 
   const { createClient } = window.supabase;
-  supabaseClient = createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey);
+  supabaseClient = createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+
+  const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+  if (sessionError) {
+    authStatus.textContent = `Sign-in could not be checked: ${sessionError.message}`;
+    return false;
+  }
+  if (!session) {
+    authStatus.textContent = "Enter the authorized email to receive a secure sign-in link.";
+    return false;
+  }
+
+  const sessionEmail = (session.user.email || "").toLowerCase();
+  if (sessionEmail !== APP_CONFIG.authorizedEmail) {
+    await supabaseClient.auth.signOut();
+    authStatus.textContent = "This email is not authorized for Sammy's journal.";
+    return false;
+  }
+
+  currentUser = session.user;
 
   const { error } = await supabaseClient
     .from("about_my_day_entries")
@@ -466,18 +508,19 @@ async function initBackend() {
     .limit(1);
 
   if (error) {
-    dataBackend = "local";
-    setStatus("● Cloud unavailable — saving on this device");
-    return;
+    authStatus.textContent = `Cloud setup could not be opened: ${error.message}`;
+    return false;
   }
 
   dataBackend = "supabase";
-  setStatus("● Connected to shared cloud data");
+  document.body.classList.remove("auth-required");
+  setStatus("● Connected to private cloud storage");
+  return true;
 }
 
 async function fetchEntries() {
   if (dataBackend !== "supabase") {
-    return getEntries();
+    return [];
   }
 
   const { data, error } = await supabaseClient
@@ -487,8 +530,8 @@ async function fetchEntries() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    setStatus("Cloud read failed. Showing local data only.");
-    return getEntries();
+    setStatus(`Cloud read failed: ${error.message}`);
+    return [];
   }
 
   return data.map(mapSupabaseRowToEntry);
@@ -496,22 +539,13 @@ async function fetchEntries() {
 
 async function upsertEntry(entry) {
   if (dataBackend !== "supabase") {
-    const entries = getEntries();
-    const existingIndex = entries.findIndex((item) => item.id === entry.id);
-
-    if (existingIndex >= 0) {
-      entries[existingIndex] = entry;
-    } else {
-      entries.push(entry);
-    }
-
-    setEntries(entries);
-    return;
+    throw new Error("Sign in is required before saving");
   }
 
   const row = {
     id: entry.id,
     project_id: APP_CONFIG.projectId,
+    owner_id: currentUser.id,
     date: entry.date,
     child_name: entry.childName,
     staff_initials: entry.staffInitials,
@@ -529,19 +563,14 @@ async function upsertEntry(entry) {
 }
 
 async function deleteEntry(entryId) {
-  if (dataBackend !== "supabase") {
-    setEntries(getEntries().filter((entry) => entry.id !== entryId));
-  } else {
-    const { error } = await supabaseClient
-      .from("about_my_day_entries")
-      .delete()
-      .eq("project_id", APP_CONFIG.projectId)
-      .eq("id", entryId);
-    if (error) throw new Error(error.message);
-  }
-
   const photos = await getPhotoRecords(entryId);
   await Promise.all(photos.map((photo) => deletePhotoRecord(photo.id)));
+  const { error } = await supabaseClient
+    .from("about_my_day_entries")
+    .delete()
+    .eq("project_id", APP_CONFIG.projectId)
+    .eq("id", entryId);
+  if (error) throw new Error(error.message);
 }
 
 function createBlocks() {
@@ -771,35 +800,24 @@ function jumpToMonth(value) {
   openDate(`${value}-${day}`);
 }
 
-function savePreferences(entry) {
-  if (!entry.childName && !entry.staffInitials) return;
-  writeJSON(PREFS_KEY, {
-    childName: entry.childName,
-    staffInitials: entry.staffInitials
-  });
-}
-
 async function persistCurrentForm({ manual = false } = {}) {
   window.clearTimeout(autoSaveTimer);
   const entry = readCurrentForm();
-  writeJSON(DRAFT_KEY, entry);
-  savePreferences(entry);
 
   if (!entry.childName || !entry.date) {
-    setStatus("Draft saved — add a name to file this day");
+    setStatus("Add a name and date before saving");
     return false;
   }
 
   try {
+    await upsertEntry(entry);
     await movePhotoRecords(currentPhotoEntryId, entry.id);
     currentPhotoEntryId = entry.id;
-    await upsertEntry(entry);
     await renderHistory();
-    const destination = dataBackend === "supabase" ? "cloud" : "this device";
-    setStatus(`${manual ? "✓ Saved" : "✓ Autosaved"} to ${destination}`);
+    setStatus(`${manual ? "✓ Saved" : "✓ Autosaved"} to the private cloud`);
     return true;
   } catch (error) {
-    setStatus("Autosave paused — your draft is safe on this device");
+    setStatus("Cloud save failed — keep this page open and try Save now again");
     if (manual) alert(`Save failed: ${error.message}`);
     return false;
   }
@@ -823,23 +841,8 @@ function applyRememberedDetails() {
   entryTimeInput.value = currentTimeISO();
 }
 
-function restoreDraft() {
-  const draft = readJSON(DRAFT_KEY, null);
-  if (!draft?.blocks?.length) return false;
-  if (draft.date !== todayISO()) return false;
-  writeForm({
-    ...draft,
-    childName: DEFAULT_CHILD_NAME,
-    staffInitials: DEFAULT_STAFF_INITIALS,
-    id: keyForEntry(draft.date || todayISO(), DEFAULT_CHILD_NAME)
-  });
-  setStatus("✓ Last draft restored — autosave is on");
-  return true;
-}
-
 function newDay() {
   window.clearTimeout(autoSaveTimer);
-  localStorage.removeItem(DRAFT_KEY);
   clearForm(false);
   childNameInput.value = DEFAULT_CHILD_NAME;
   staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
@@ -858,9 +861,6 @@ async function clearToday() {
   try {
     window.clearTimeout(autoSaveTimer);
     await deleteEntry(entryId);
-    const draft = readJSON(DRAFT_KEY, null);
-    if (draft?.date === today) localStorage.removeItem(DRAFT_KEY);
-
     clearForm(false);
     childNameInput.value = DEFAULT_CHILD_NAME;
     staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
@@ -1049,7 +1049,6 @@ async function renderHistory() {
       try {
         await deleteEntry(entry.id);
         if (currentPhotoEntryId === entry.id) {
-          localStorage.removeItem(DRAFT_KEY);
           newDay();
         }
         await renderHistory();
@@ -1225,6 +1224,36 @@ clearTodayBtn.addEventListener("click", clearToday);
 exportBtn.addEventListener("click", downloadJSON);
 printBtn.addEventListener("click", printCurrentDay);
 printTabBtn.addEventListener("click", printCurrentDay);
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = authEmail.value.trim().toLowerCase();
+  if (email !== APP_CONFIG.authorizedEmail) {
+    authStatus.textContent = "This email is not authorized for Sammy's journal.";
+    return;
+  }
+  if (!supabaseClient) {
+    authStatus.textContent = "Secure storage is still loading. Please try again.";
+    return;
+  }
+
+  const button = authForm.querySelector("button");
+  button.disabled = true;
+  authStatus.textContent = "Sending a secure sign-in link...";
+  const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectUrl, shouldCreateUser: true }
+  });
+  button.disabled = false;
+  authStatus.textContent = error
+    ? `Could not send the link: ${error.message}`
+    : "Check your email and tap the sign-in link. You can close this page.";
+});
+signOutBtn.addEventListener("click", async () => {
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  window.location.reload();
+});
 document.getElementById("sampleBtn").addEventListener("click", fillSample);
 copyLastBtn.addEventListener("click", copyLastDay);
 previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
@@ -1248,16 +1277,11 @@ clearFiltersBtn.addEventListener("click", () => {
   historyMonth.value = "";
   renderHistory();
 });
-window.addEventListener("beforeunload", () => {
-  if (document.querySelector(".day-block")) {
-    writeJSON(DRAFT_KEY, readCurrentForm());
-  }
-});
 window.addEventListener("beforeprint", preparePrintLayout);
 window.addEventListener("afterprint", restoreScreenLayout);
 refreshBtn.addEventListener("click", async () => {
   await renderHistory();
-  setStatus(dataBackend === "supabase" ? "Shared data refreshed." : "Local data refreshed.");
+  setStatus("Private cloud data refreshed.");
 });
 async function startApp() {
   createBlocks();
@@ -1266,11 +1290,12 @@ async function startApp() {
   applyRememberedDetails();
   updateFormProgress();
   updateCalendarNotice();
-  await initBackend();
+  const connected = await initBackend();
+  if (!connected) return;
   await renderHistory();
   if (new URLSearchParams(window.location.search).get("sample") === "1") {
     fillSample();
-  } else if (!restoreDraft()) {
+  } else {
     await openDate(todayISO(), { saveCurrent: false });
   }
 
