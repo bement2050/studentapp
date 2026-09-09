@@ -1,0 +1,6 @@
+*-preview*.png
+print-sample*.pdf
+.chrome-*
+.edge-*
+Thumbs.db
+.DS_Store

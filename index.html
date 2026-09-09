@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1d4e43" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>About My Day</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div class="brand-mark" aria-hidden="true">☀</div>
+        <div class="hero-copy">
+          <p class="kicker">Daily care journal</p>
+          <h1>About My Day</h1>
+          <p class="hero-subtitle">A simple, calm way to capture the moments that matter.</p>
+        </div>
+        <div class="global-clock" aria-label="Current local date and time">
+          <time id="globalDateTime"></time>
+          <span id="globalTimeZone"></span>
+        </div>
+        <div class="hero-actions">
+          <button id="clearFormBtn" class="btn btn-ghost" type="button">New day</button>
+          <button id="clearTodayBtn" class="btn btn-clear" type="button">Clear today</button>
+          <button id="saveEntryBtn" class="btn btn-primary" type="button">Save day</button>
+        </div>
+      </header>
+
+      <section class="panel meta-panel" aria-labelledby="day-details-heading">
+        <div class="section-intro">
+          <p class="eyebrow">01 · The basics</p>
+          <h2 id="day-details-heading">Day details</h2>
+        </div>
+        <label>
+          Student name
+          <input id="childName" type="text" value="Sammy" placeholder="e.g. Sammy" maxlength="60" autocomplete="name" enterkeyhint="next" list="childNames" required />
+          <datalist id="childNames"></datalist>
+        </label>
+        <label>
+          Date <span class="field-hint">Automatically set to today</span>
+          <input id="entryDate" type="date" required />
+        </label>
+        <label>
+          Time <span class="field-hint" id="entryTimeZone"></span>
+          <input id="entryTime" type="time" required />
+        </label>
+        <label>
+          Staff initials
+          <input id="staffInitials" type="text" value="JK" placeholder="e.g. JK" maxlength="8" autocomplete="off" />
+        </label>
+      </section>
+
+      <aside id="calendarNotice" class="calendar-notice" aria-live="polite">
+        <div class="calendar-icon" aria-hidden="true">📅</div>
+        <div>
+          <strong id="calendarNoticeTitle">Plano ISD calendar</strong>
+          <p id="calendarNoticeText"></p>
+        </div>
+        <a href="https://www.pisd.edu/about-our-district/calendar" target="_blank" rel="noreferrer">District calendar ↗</a>
+      </aside>
+
+      <div class="status-row">
+        <p id="syncStatus" class="sync-status" role="status" aria-live="polite"></p>
+        <div class="utility-actions">
+          <button id="copyLastBtn" class="text-btn" type="button">Copy last day</button>
+          <button id="sampleBtn" class="text-btn" type="button">Fill sample</button>
+          <button id="refreshBtn" class="text-btn" type="button">Refresh</button>
+          <button id="exportBtn" class="text-btn" type="button">Export</button>
+          <button id="printBtn" class="text-btn" type="button">Print</button>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">02 · Check in</p>
+          <h2>How did the day go?</h2>
+        </div>
+        <p>Choose what fits and add a few helpful notes.</p>
+      </div>
+
+      <div class="progress-card" aria-live="polite">
+        <div class="progress-copy">
+          <strong id="completionText">0 of 4 check-ins started</strong>
+          <span id="nextClosure"></span>
+        </div>
+        <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+      </div>
+
+      <section id="blocksContainer" class="blocks" aria-live="polite"></section>
+
+      <section class="panel history-panel">
+        <div class="history-heading">
+          <div>
+            <p class="eyebrow">03 · Look back</p>
+            <h2>Past days <span id="historyCount" class="history-count">0</span></h2>
+          </div>
+        </div>
+        <div class="history-filters">
+          <label class="history-search">
+            <span class="sr-only">Search past days</span>
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input id="historySearch" type="search" placeholder="Search child, staff, or notes" autocomplete="off" />
+          </label>
+          <label>
+            <span class="sr-only">Filter past days by month</span>
+            <input id="historyMonth" type="month" aria-label="Filter past days by month" />
+          </label>
+          <button id="clearFiltersBtn" class="text-btn" type="button">Clear filters</button>
+        </div>
+        <ul id="historyList" class="history-list"></ul>
+      </section>
+
+      <footer class="print-footer">
+        <span>About My Day · Plano ISD</span>
+        <span id="printDate"></span>
+      </footer>
+    </main>
+
+    <section id="paperPrintSheet" class="paper-print-sheet" aria-hidden="true">
+      <header class="paper-sheet-header">
+        <div class="paper-sheet-title">About My Day</div>
+        <div class="paper-name-box"><strong>Name:</strong> <span id="paperStudentName"></span></div>
+      </header>
+      <div class="paper-sheet-meta">
+        <span>Date of: <strong id="paperEntryDate"></strong></span>
+        <span>Time: <strong id="paperEntryTime"></strong></span>
+        <span>Staff: <strong id="paperStaffInitials"></strong></span>
+      </div>
+      <div id="paperRows" class="paper-rows"></div>
+      <footer class="paper-sheet-footer">
+        <span>Speech and O.T. supports are marked for each check-in.</span>
+        <span id="paperTimeZone"></span>
+      </footer>
+    </section>
+
+    <template id="blockTemplate">
+      <article class="panel day-block">
+        <div class="block-head">
+          <h3 class="block-title"></h3>
+          <span class="badge"></span>
+        </div>
+
+        <fieldset class="mood-row">
+          <legend>Mood</legend>
+          <label><input type="radio" value="happy" /> <span>😀 Happy</span></label>
+          <label><input type="radio" value="sad" /> <span>😢 Sad</span></label>
+          <label><input type="radio" value="silly" /> <span>😜 Silly</span></label>
+          <label><input type="radio" value="mad" /> <span>😠 Mad</span></label>
+        </fieldset>
+
+        <fieldset class="activity-row">
+          <legend>Activities</legend>
+          <label><input type="checkbox" value="art" /> <span>Art</span></label>
+          <label><input type="checkbox" value="music" /> <span>Music</span></label>
+          <label><input type="checkbox" value="sports" /> <span>Sports</span></label>
+          <label><input type="checkbox" value="sensory" /> <span>Sensory break</span></label>
+        </fieldset>
+
+        <label class="notes-wrap">
+          Notes about today
+          <textarea rows="4" placeholder="What happened during this part of the day?"></textarea>
+          <span class="character-count">0 / 500</span>
+        </label>
+
+        <section class="photo-section" aria-label="Photos from this part of the day">
+          <div class="photo-heading">
+            <strong>Photos</strong>
+            <span class="photo-count">0 added · saved on this device</span>
+          </div>
+          <div class="photo-gallery"></div>
+          <div class="photo-actions">
+            <label class="photo-add">
+              <span aria-hidden="true">📷</span>
+              <span>Take picture</span>
+              <input class="photo-input" type="file" accept="image/*" capture="environment" />
+            </label>
+            <label class="photo-add">
+              <span aria-hidden="true">🖼️</span>
+              <span>Upload pictures</span>
+              <input class="photo-input" type="file" accept="image/*" multiple />
+            </label>
+          </div>
+        </section>
+
+        <div class="support-row">
+          <span>Support today</span>
+          <label><input type="checkbox" class="speech" /> Speech</label>
+          <label><input type="checkbox" class="ot" /> O.T.</label>
+        </div>
+      </article>
+    </template>
+
+    <div class="mobile-save-bar">
+      <div>
+        <strong>About My Day</strong>
+        <span id="mobileSaveStatus">Autosave is on</span>
+      </div>
+      <button id="mobileSaveBtn" class="btn btn-primary" type="button">Save now</button>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

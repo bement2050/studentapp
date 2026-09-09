@@ -1,0 +1,9 @@
+{
+  "name": "About My Day",
+  "short_name": "My Day",
+  "description": "A simple daily care journal for school and home.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f1eb",
+  "theme_color": "#1d4e43"
+}
