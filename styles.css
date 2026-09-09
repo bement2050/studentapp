@@ -117,49 +117,6 @@ h1 {
   flex-wrap: wrap;
 }
 
-.app-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .35rem;
-  width: min(100%, 520px);
-  padding: .35rem;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255,255,255,.82);
-  box-shadow: 0 6px 18px rgba(35, 64, 56, .06);
-}
-
-.app-tab {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  padding: .55rem .7rem;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--green);
-  cursor: pointer;
-  font-weight: 800;
-  text-align: center;
-  text-decoration: none;
-}
-
-.app-tab:hover,
-.app-tab:focus-visible {
-  background: var(--soft-green);
-}
-
-.app-tab.is-active {
-  background: var(--green);
-  color: #fff;
-}
-
-.app-tab-print {
-  background: #fff0df;
-  color: #8d3717;
-}
-
 .panel {
   border: 1px solid var(--line);
   min-width: 0;
@@ -333,11 +290,22 @@ button:focus-visible {
   font-size: .78rem;
 }
 
+.date-picker-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  width: min(100%, 560px);
+  padding: .55rem;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255,255,255,.65);
+}
+
 .date-navigator {
   display: grid;
-  grid-template-columns: auto minmax(155px, 1fr) minmax(155px, 1fr) auto auto;
-  align-items: end;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: .55rem;
+  width: min(100%, 560px);
   padding: .55rem;
   border: 1px solid var(--line);
   border-radius: 15px;
@@ -357,6 +325,11 @@ button:focus-visible {
 
 .date-nav-btn:hover {
   background: var(--soft-green);
+}
+
+.date-nav-btn:disabled {
+  cursor: not-allowed;
+  opacity: .45;
 }
 
 .month-jump,
@@ -921,18 +894,13 @@ fieldset label input:checked + span {
     grid-template-columns: repeat(3, 1fr);
   }
 
+  .date-picker-strip {
+    grid-template-columns: 1fr;
+  }
+
   .month-jump,
   .date-jump {
-    grid-column: 1 / -1;
-    grid-template-columns: auto 1fr;
-  }
-
-  .month-jump {
-    grid-row: 1;
-  }
-
-  .date-jump {
-    grid-row: 2;
+    grid-template-columns: 90px 1fr;
   }
 
   .date-nav-btn {
@@ -1124,6 +1092,7 @@ fieldset label input:checked + span {
 
   .hero-actions,
   .app-tabs,
+  .date-picker-strip,
   .date-navigator,
   .calendar-notice,
   .status-row,

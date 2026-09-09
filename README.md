@@ -8,18 +8,17 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Daily form with 2 check-in blocks (Morning and Afternoon)
 - Eight emotions with multi-select, plus activities, notes, speech, and O.T.
 - Save and load history from any device using the app link
-- Export all saved entries to JSON
 - Automatic saving to shared cloud storage
 - Remembers the last child name and staff initials
 - Plano ISD 2026-27 holiday, break, and early-release notices
-- Previous/next day controls plus a month picker for quickly reviewing saved days
+- Previous/next/today controls limited to the current school year, plus separate month and exact-date pickers
 - Compact upcoming-holiday banner and automatic "No school" entries on closure days
 - Phone-friendly controls and a fixed mobile save button
 - Opens directly without a login for anyone who has the app link
 - Camera/photo attachments for every check-in (up to 8 per section)
 - Searchable past-day archive with month filtering, reopening, editing, and individual deletion
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
-- Simple Today's entry and Print tabs on phone and desktop
+- Small Print action at the top on phone and desktop
 - Automatic localized date/time with the device's global IANA timezone
 
 ## Run Locally

@@ -1,6 +1,7 @@
 const MAX_PHOTOS_PER_BLOCK = 8;
 const DEFAULT_CHILD_NAME = "Sammy";
 const DEFAULT_STAFF_INITIALS = "JK";
+const MIN_JOURNAL_DATE = "2026-08-11";
 const BLOCK_TITLES = [
   "Morning",
   "Afternoon"
@@ -49,7 +50,6 @@ const completionText = document.getElementById("completionText");
 const progressBar = document.getElementById("progressBar");
 const nextClosure = document.getElementById("nextClosure");
 const printBtn = document.getElementById("printBtn");
-const printTabBtn = document.getElementById("printTabBtn");
 const paperPrintSheet = document.getElementById("paperPrintSheet");
 const paperStudentName = document.getElementById("paperStudentName");
 const paperEntryDate = document.getElementById("paperEntryDate");
@@ -58,9 +58,6 @@ const paperRows = document.getElementById("paperRows");
 
 const clearFormBtn = document.getElementById("clearFormBtn");
 const clearTodayBtn = document.getElementById("clearTodayBtn");
-const exportBtn = document.getElementById("exportBtn");
-const refreshBtn = document.getElementById("refreshBtn");
-const copyLastBtn = document.getElementById("copyLastBtn");
 
 const blockTemplate = document.getElementById("blockTemplate");
 
@@ -76,6 +73,23 @@ function todayISO() {
   const now = new Date();
   const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
   return localDate.toISOString().slice(0, 10);
+}
+
+function clampJournalDate(dateString) {
+  if (dateString < MIN_JOURNAL_DATE) return MIN_JOURNAL_DATE;
+  if (dateString > todayISO()) return todayISO();
+  return dateString;
+}
+
+function updateDateNavigationState() {
+  const current = entryDateInput.value || todayISO();
+  entryDateInput.min = MIN_JOURNAL_DATE;
+  entryDateInput.max = todayISO();
+  monthJump.min = MIN_JOURNAL_DATE.slice(0, 7);
+  monthJump.max = todayISO().slice(0, 7);
+  previousDayBtn.disabled = current <= MIN_JOURNAL_DATE;
+  nextDayBtn.disabled = current >= todayISO();
+  todayBtn.disabled = current === todayISO();
 }
 
 function ensureCloudSession() {
@@ -201,6 +215,7 @@ function shortDate(dateString) {
 
 function updateCalendarNotice() {
   const selectedDate = entryDateInput.value || todayISO();
+  updateDateNavigationState();
   const event = calendarEventFor(selectedDate);
   calendarNotice.classList.toggle("is-closure", event?.kind === "holiday");
   calendarNotice.classList.toggle("is-early", event?.kind === "early");
@@ -664,6 +679,7 @@ function fillHolidayDay(event) {
 
 async function openDate(targetDate, { saveCurrent = true } = {}) {
   if (!targetDate) return;
+  targetDate = clampJournalDate(targetDate);
   window.clearTimeout(autoSaveTimer);
   const previousDate = activeDate;
 
@@ -706,7 +722,7 @@ function dateOffset(dateString, amount) {
   const date = new Date(`${dateString}T12:00:00`);
   date.setDate(date.getDate() + amount);
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return localDate.toISOString().slice(0, 10);
+  return clampJournalDate(localDate.toISOString().slice(0, 10));
 }
 
 function jumpToMonth(value) {
@@ -1118,11 +1134,7 @@ function restoreScreenLayout() {
 
 clearFormBtn.addEventListener("click", newDay);
 clearTodayBtn.addEventListener("click", clearToday);
-exportBtn.addEventListener("click", downloadJSON);
 printBtn.addEventListener("click", printCurrentDay);
-printTabBtn.addEventListener("click", printCurrentDay);
-document.getElementById("sampleBtn").addEventListener("click", fillSample);
-copyLastBtn.addEventListener("click", copyLastDay);
 previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
 nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
@@ -1139,10 +1151,6 @@ blocksContainer.addEventListener("change", (event) => {
 });
 window.addEventListener("beforeprint", preparePrintLayout);
 window.addEventListener("afterprint", restoreScreenLayout);
-refreshBtn.addEventListener("click", async () => {
-  await openDate(activeDate, { saveCurrent: false });
-  setStatus("Private cloud data refreshed.");
-});
 async function startApp() {
   createBlocks();
   applyRememberedDetails();
