@@ -62,63 +62,6 @@ body {
   font-size: 1.8rem;
 }
 
-.auth-gate {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 1rem;
-}
-
-body:not(.auth-required) .auth-gate {
-  display: none;
-}
-
-body.auth-required .app-shell,
-body.auth-required .mobile-save-bar {
-  display: none !important;
-}
-
-.auth-card {
-  display: grid;
-  width: min(100%, 430px);
-  gap: 1rem;
-  padding: clamp(1.3rem, 5vw, 2.2rem);
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-}
-
-.auth-card p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.auth-card .kicker {
-  color: var(--green);
-  font-weight: 800;
-}
-
-.auth-card form {
-  display: grid;
-  gap: 1rem;
-}
-
-.auth-card input[type="email"] {
-  width: 100%;
-  min-height: 48px;
-  padding: .72rem .8rem;
-  border: 1.5px solid #bdcbc4;
-  border-radius: 10px;
-  background: #fff;
-  font: inherit;
-}
-
-.auth-status {
-  min-height: 1.4rem;
-  font-size: .85rem;
-}
-
 .hero-copy {
   flex: 1;
   min-width: 0;

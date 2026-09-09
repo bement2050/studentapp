@@ -16,23 +16,7 @@
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body class="auth-required">
-    <section id="authGate" class="auth-gate" aria-labelledby="authHeading">
-      <div class="auth-card">
-        <p class="kicker">Private centralized journal</p>
-        <h1 id="authHeading">Today's Journal</h1>
-        <p>Sign in with the authorized email to open Sammy's journal.</p>
-        <form id="authForm">
-          <label>
-            Authorized email
-            <input id="authEmail" type="email" value="bemnetgizachew@gmail.com" autocomplete="email" required />
-          </label>
-          <button class="btn btn-primary" type="submit">Email me a sign-in link</button>
-        </form>
-        <p id="authStatus" class="auth-status" role="status" aria-live="polite">Entries and photos are stored privately in Supabase.</p>
-      </div>
-    </section>
-
+  <body>
     <main class="app-shell">
       <header class="hero">
         <div class="brand-mark" aria-hidden="true">☀</div>
@@ -49,7 +33,6 @@
           <button id="clearFormBtn" class="btn btn-ghost" type="button">New day</button>
           <button id="clearTodayBtn" class="btn btn-clear" type="button">Clear today</button>
           <button id="saveEntryBtn" class="btn btn-primary" type="button">Save day</button>
-          <button id="signOutBtn" class="btn btn-ghost" type="button">Sign out</button>
         </div>
       </header>
 

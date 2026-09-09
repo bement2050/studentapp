@@ -1,4 +1,4 @@
-const CACHE_NAME = "about-my-day-v16";
+const CACHE_NAME = "about-my-day-v17";
 const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json"];
 
 self.addEventListener("install", (event) => {

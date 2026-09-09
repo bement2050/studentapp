@@ -1,21 +1,21 @@
 # Today's Journal Web App
 
 This is a lightweight web app version of your paper "About My Day" sheet, named "Today's Journal" for everyday use.
-Journal entries and photos are stored centrally in a private Supabase project.
+Journal entries and photos are stored centrally in Supabase for link-based access.
 
 ## Features
 
 - Daily form with 4 check-in blocks (Morning, Afternoon, Evening, End of day)
 - Mood, activities, notes, speech, and O.T.
-- Save and load history from any signed-in device
+- Save and load history from any device using the app link
 - Export all saved entries to JSON
-- Automatic saving to private cloud storage
+- Automatic saving to shared cloud storage
 - Remembers the last child name and staff initials
 - Plano ISD 2026-27 holiday, break, and early-release notices
 - Previous/next day controls plus a month picker for quickly reviewing saved days
 - Compact upcoming-holiday banner and automatic "No school" entries on closure days
 - Phone-friendly controls and a fixed mobile save button
-- Email-link authentication restricted to the authorized journal user
+- Opens directly without a login for anyone who has the app link
 - Camera/photo attachments for every check-in (up to 8 per section)
 - Searchable past-day archive with month filtering, reopening, editing, and individual deletion
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
@@ -52,8 +52,8 @@ Then visit `http://localhost:4173`. Use **Fill sample** to preview a completed d
 
 - Entries and photos are stored in Supabase, not in browser storage or the GitHub repository.
 - Photos are resized before secure upload. JSON export includes the photos as embedded data so the backup is complete.
-- Supabase keeps the login session on the device so the authorized user can remain signed in.
 - The app requires an internet connection to read or save journal data.
+- Anyone with the link can view, add, edit, or delete journal data, so share the link carefully.
 
 ## Supabase Central Storage Setup
 
@@ -61,7 +61,7 @@ Then visit `http://localhost:4173`. Use **Fill sample** to preview a completed d
 2. Create a new query, paste all of `supabase-setup.sql`, and click **Run**.
 3. In **Authentication -> URL Configuration**, set the site URL to
    `https://bement2050.github.io/studentapp/` and add the same value as a redirect URL.
-4. The policies in the setup file limit access to `bemnetgizachew@gmail.com`.
+4. Run `supabase-public-access.sql` to enable direct link access without sign-in.
 
 The public/publishable browser key is used by the web app. Never place a secret or
 service-role key in this repository.

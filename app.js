@@ -33,14 +33,8 @@ const APP_CONFIG = {
   projectId: "sam-about-my-day",
   supabaseUrl: "https://voanpatamwilfdwppleu.supabase.co",
   supabaseAnonKey: "sb_publishable_uDAkRERB3dCTfhh-_hl6sQ_Btddu68C",
-  authorizedEmail: "bemnetgizachew@gmail.com",
   photoBucket: "journal-photos"
 };
-
-const authGate = document.getElementById("authGate");
-const authForm = document.getElementById("authForm");
-const authEmail = document.getElementById("authEmail");
-const authStatus = document.getElementById("authStatus");
 
 const childNameInput = document.getElementById("childName");
 const entryDateInput = document.getElementById("entryDate");
@@ -86,13 +80,11 @@ const exportBtn = document.getElementById("exportBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const mobileSaveBtn = document.getElementById("mobileSaveBtn");
 const copyLastBtn = document.getElementById("copyLastBtn");
-const signOutBtn = document.getElementById("signOutBtn");
 
 const blockTemplate = document.getElementById("blockTemplate");
 
 let dataBackend = "initializing";
 let supabaseClient = null;
-let currentUser = null;
 let autoSaveTimer = null;
 let isHydrating = false;
 let currentPhotoEntryId = null;
@@ -128,8 +120,8 @@ function updateGlobalClock() {
 }
 
 function ensureCloudSession() {
-  if (!supabaseClient || !currentUser) {
-    throw new Error("Sign in is required");
+  if (!supabaseClient) {
+    throw new Error("Cloud storage is not connected");
   }
 }
 
@@ -152,7 +144,7 @@ async function signedPhotoRecord(row, blob = null) {
 
 async function savePhotoRecord(record) {
   ensureCloudSession();
-  const storagePath = `${currentUser.id}/${record.id}.jpg`;
+  const storagePath = `shared/${record.id}.jpg`;
   const { error: uploadError } = await supabaseClient.storage
     .from(APP_CONFIG.photoBucket)
     .upload(storagePath, record.blob, {
@@ -163,7 +155,6 @@ async function savePhotoRecord(record) {
 
   const row = {
     id: record.id,
-    owner_id: currentUser.id,
     entry_id: record.entryId,
     block_index: record.blockIndex,
     storage_path: storagePath,
@@ -473,33 +464,14 @@ async function initBackend() {
   try {
     await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
   } catch {
-    authStatus.textContent = "Could not reach secure storage. Check the internet connection and reload.";
+    setStatus("Could not reach cloud storage. Check the internet connection and reload.");
     return false;
   }
 
   const { createClient } = window.supabase;
   supabaseClient = createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
   });
-
-  const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-  if (sessionError) {
-    authStatus.textContent = `Sign-in could not be checked: ${sessionError.message}`;
-    return false;
-  }
-  if (!session) {
-    authStatus.textContent = "Enter the authorized email to receive a secure sign-in link.";
-    return false;
-  }
-
-  const sessionEmail = (session.user.email || "").toLowerCase();
-  if (sessionEmail !== APP_CONFIG.authorizedEmail) {
-    await supabaseClient.auth.signOut();
-    authStatus.textContent = "This email is not authorized for Sammy's journal.";
-    return false;
-  }
-
-  currentUser = session.user;
 
   const { error } = await supabaseClient
     .from("about_my_day_entries")
@@ -508,13 +480,12 @@ async function initBackend() {
     .limit(1);
 
   if (error) {
-    authStatus.textContent = `Cloud setup could not be opened: ${error.message}`;
+    setStatus(`Cloud setup could not be opened: ${error.message}`);
     return false;
   }
 
   dataBackend = "supabase";
-  document.body.classList.remove("auth-required");
-  setStatus("● Connected to private cloud storage");
+  setStatus("● Connected to shared cloud storage");
   return true;
 }
 
@@ -545,7 +516,6 @@ async function upsertEntry(entry) {
   const row = {
     id: entry.id,
     project_id: APP_CONFIG.projectId,
-    owner_id: currentUser.id,
     date: entry.date,
     child_name: entry.childName,
     staff_initials: entry.staffInitials,
@@ -814,7 +784,7 @@ async function persistCurrentForm({ manual = false } = {}) {
     await movePhotoRecords(currentPhotoEntryId, entry.id);
     currentPhotoEntryId = entry.id;
     await renderHistory();
-    setStatus(`${manual ? "✓ Saved" : "✓ Autosaved"} to the private cloud`);
+    setStatus(`${manual ? "✓ Saved" : "✓ Autosaved"} to shared cloud storage`);
     return true;
   } catch (error) {
     setStatus("Cloud save failed — keep this page open and try Save now again");
@@ -1224,36 +1194,6 @@ clearTodayBtn.addEventListener("click", clearToday);
 exportBtn.addEventListener("click", downloadJSON);
 printBtn.addEventListener("click", printCurrentDay);
 printTabBtn.addEventListener("click", printCurrentDay);
-authForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const email = authEmail.value.trim().toLowerCase();
-  if (email !== APP_CONFIG.authorizedEmail) {
-    authStatus.textContent = "This email is not authorized for Sammy's journal.";
-    return;
-  }
-  if (!supabaseClient) {
-    authStatus.textContent = "Secure storage is still loading. Please try again.";
-    return;
-  }
-
-  const button = authForm.querySelector("button");
-  button.disabled = true;
-  authStatus.textContent = "Sending a secure sign-in link...";
-  const redirectUrl = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectUrl, shouldCreateUser: true }
-  });
-  button.disabled = false;
-  authStatus.textContent = error
-    ? `Could not send the link: ${error.message}`
-    : "Check your email and tap the sign-in link. You can close this page.";
-});
-signOutBtn.addEventListener("click", async () => {
-  await supabaseClient.auth.signOut();
-  currentUser = null;
-  window.location.reload();
-});
 document.getElementById("sampleBtn").addEventListener("click", fillSample);
 copyLastBtn.addEventListener("click", copyLastDay);
 previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
