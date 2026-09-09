@@ -1,7 +1,6 @@
 const MAX_PHOTOS_PER_BLOCK = 8;
 const DEFAULT_CHILD_NAME = "Sammy";
 const DEFAULT_STAFF_INITIALS = "JK";
-const USER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const BLOCK_TITLES = [
   "Morning",
   "Afternoon"
@@ -37,47 +36,30 @@ const APP_CONFIG = {
 const childNameInput = document.getElementById("childName");
 const entryDateInput = document.getElementById("entryDate");
 const staffInitialsInput = document.getElementById("staffInitials");
-const entryTimeInput = document.getElementById("entryTime");
-const entryTimeZone = document.getElementById("entryTimeZone");
-const globalDateTime = document.getElementById("globalDateTime");
-const globalTimeZone = document.getElementById("globalTimeZone");
 const previousDayBtn = document.getElementById("previousDayBtn");
 const nextDayBtn = document.getElementById("nextDayBtn");
 const todayBtn = document.getElementById("todayBtn");
 const monthJump = document.getElementById("monthJump");
-const dateJump = document.getElementById("dateJump");
 const blocksContainer = document.getElementById("blocksContainer");
-const historyList = document.getElementById("historyList");
 const syncStatus = document.getElementById("syncStatus");
-const mobileSaveStatus = document.getElementById("mobileSaveStatus");
 const calendarNotice = document.getElementById("calendarNotice");
 const calendarNoticeTitle = document.getElementById("calendarNoticeTitle");
 const calendarNoticeText = document.getElementById("calendarNoticeText");
 const completionText = document.getElementById("completionText");
 const progressBar = document.getElementById("progressBar");
 const nextClosure = document.getElementById("nextClosure");
-const childNames = document.getElementById("childNames");
-const historyCount = document.getElementById("historyCount");
-const historySearch = document.getElementById("historySearch");
-const historyMonth = document.getElementById("historyMonth");
-const clearFiltersBtn = document.getElementById("clearFiltersBtn");
 const printBtn = document.getElementById("printBtn");
 const printTabBtn = document.getElementById("printTabBtn");
-const printDate = document.getElementById("printDate");
 const paperPrintSheet = document.getElementById("paperPrintSheet");
 const paperStudentName = document.getElementById("paperStudentName");
 const paperEntryDate = document.getElementById("paperEntryDate");
-const paperEntryTime = document.getElementById("paperEntryTime");
 const paperStaffInitials = document.getElementById("paperStaffInitials");
-const paperTimeZone = document.getElementById("paperTimeZone");
 const paperRows = document.getElementById("paperRows");
 
-const saveEntryBtn = document.getElementById("saveEntryBtn");
 const clearFormBtn = document.getElementById("clearFormBtn");
 const clearTodayBtn = document.getElementById("clearTodayBtn");
 const exportBtn = document.getElementById("exportBtn");
 const refreshBtn = document.getElementById("refreshBtn");
-const mobileSaveBtn = document.getElementById("mobileSaveBtn");
 const copyLastBtn = document.getElementById("copyLastBtn");
 
 const blockTemplate = document.getElementById("blockTemplate");
@@ -94,28 +76,6 @@ function todayISO() {
   const now = new Date();
   const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
   return localDate.toISOString().slice(0, 10);
-}
-
-function currentTimeISO() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-}
-
-function updateGlobalClock() {
-  const now = new Date();
-  globalDateTime.dateTime = now.toISOString();
-  globalDateTime.textContent = new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(now);
-  const zoneName = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
-    .formatToParts(now)
-    .find((part) => part.type === "timeZoneName")?.value;
-  globalTimeZone.textContent = `${zoneName || ""} · ${USER_TIME_ZONE.replaceAll("_", " ")}`;
-  entryTimeZone.textContent = zoneName || USER_TIME_ZONE;
 }
 
 function ensureCloudSession() {
@@ -228,7 +188,6 @@ async function movePhotoRecords(fromEntryId, toEntryId) {
 
 function setStatus(message) {
   syncStatus.textContent = message;
-  mobileSaveStatus.textContent = message.replace(/^[●✓]\s*/, "");
 }
 
 function calendarEventFor(date) {
@@ -446,8 +405,6 @@ function mapSupabaseRowToEntry(row) {
     childName: row.child_name,
     staffInitials: row.staff_initials,
     blocks: row.blocks,
-    entryTime: row.blocks?.[0]?.entryTime || "",
-    timeZone: row.blocks?.[0]?.timeZone || USER_TIME_ZONE,
     updatedAt: row.updated_at
   };
 }
@@ -586,16 +543,9 @@ function readCurrentForm() {
     };
   });
 
-  if (blocks[0]) {
-    blocks[0].entryTime = entryTimeInput.value;
-    blocks[0].timeZone = USER_TIME_ZONE;
-  }
-
   return {
     id: keyForEntry(entryDateInput.value, childNameInput.value),
     date: entryDateInput.value,
-    entryTime: entryTimeInput.value,
-    timeZone: USER_TIME_ZONE,
     childName: childNameInput.value.trim(),
     staffInitials: staffInitialsInput.value.trim().toUpperCase(),
     blocks,
@@ -610,8 +560,6 @@ function writeForm(entry) {
   entryDateInput.value = entry.date || todayISO();
   activeDate = entryDateInput.value;
   monthJump.value = activeDate.slice(0, 7);
-  dateJump.value = activeDate;
-  entryTimeInput.value = entry.entryTime || entry.blocks?.[0]?.entryTime || currentTimeISO();
   staffInitialsInput.value = entry.staffInitials || "";
 
   const blockElements = document.querySelectorAll(".day-block");
@@ -654,8 +602,6 @@ function clearForm(keepHeader = false) {
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
   monthJump.value = activeDate.slice(0, 7);
-  dateJump.value = activeDate;
-  entryTimeInput.value = currentTimeISO();
 
   document.querySelectorAll(".day-block .mood-row input").forEach((input) => {
     input.checked = false;
@@ -742,8 +688,6 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
   entryDateInput.value = targetDate;
   activeDate = targetDate;
   monthJump.value = targetDate.slice(0, 7);
-  dateJump.value = targetDate;
-  entryTimeInput.value = currentTimeISO();
   await loadPhotosForEntry(entryId);
   const holiday = calendarEventFor(targetDate);
   if (holiday?.kind === "holiday") fillHolidayDay(holiday);
@@ -787,11 +731,10 @@ async function persistCurrentForm({ manual = false } = {}) {
     await upsertEntry(entry);
     await movePhotoRecords(currentPhotoEntryId, entry.id);
     currentPhotoEntryId = entry.id;
-    await renderHistory();
     setStatus(`${manual ? "✓ Saved" : "✓ Autosaved"} to shared cloud storage`);
     return true;
   } catch (error) {
-    setStatus("Cloud save failed — keep this page open and try Save now again");
+    setStatus("Cloud save failed — keep this page open until the connection returns");
     if (manual) alert(`Save failed: ${error.message}`);
     return false;
   }
@@ -812,8 +755,6 @@ function applyRememberedDetails() {
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
   monthJump.value = activeDate.slice(0, 7);
-  dateJump.value = activeDate;
-  entryTimeInput.value = currentTimeISO();
 }
 
 function newDay() {
@@ -822,7 +763,6 @@ function newDay() {
   childNameInput.value = DEFAULT_CHILD_NAME;
   staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
   entryDateInput.value = todayISO();
-  entryTimeInput.value = currentTimeISO();
   setStatus("New day ready — name and staff details remembered");
 }
 
@@ -840,8 +780,6 @@ async function clearToday() {
     childNameInput.value = DEFAULT_CHILD_NAME;
     staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
     entryDateInput.value = today;
-    entryTimeInput.value = currentTimeISO();
-    await renderHistory();
     setStatus("Today cleared — past days were not changed");
   } catch (error) {
     setStatus(`Could not clear today: ${error.message}`);
@@ -881,8 +819,6 @@ function sampleEntry() {
   return {
     id: keyForEntry(todayISO(), DEFAULT_CHILD_NAME),
     date: todayISO(),
-    entryTime: currentTimeISO(),
-    timeZone: USER_TIME_ZONE,
     childName: DEFAULT_CHILD_NAME,
     staffInitials: DEFAULT_STAFF_INITIALS,
     updatedAt: new Date().toISOString(),
@@ -911,18 +847,6 @@ function formatEntryDate(dateString) {
     day: "numeric",
     year: "numeric"
   }).format(date);
-}
-
-function formatEntryTime(entry) {
-  const value = entry.entryTime || entry.blocks?.[0]?.entryTime;
-  if (!value) return "";
-  const [hours, minutes] = value.split(":").map(Number);
-  const time = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(2000, 0, 1, hours, minutes));
-  const zone = entry.timeZone || entry.blocks?.[0]?.timeZone || USER_TIME_ZONE;
-  return `${time} · ${zone.replaceAll("_", " ")}`;
 }
 
 async function renderHistory() {
@@ -1089,20 +1013,13 @@ async function printCurrentDay() {
 
 function preparePrintLayout() {
   const entry = readCurrentForm();
-  printDate.textContent = `Printed ${new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date())}`;
-
   paperStudentName.textContent = entry.childName || DEFAULT_CHILD_NAME;
   paperEntryDate.textContent = new Intl.DateTimeFormat(undefined, {
     month: "numeric",
     day: "numeric",
     year: "numeric"
   }).format(new Date(`${entry.date}T12:00:00`));
-  paperEntryTime.textContent = formatEntryTime(entry).split(" · ")[0];
   paperStaffInitials.textContent = entry.staffInitials || DEFAULT_STAFF_INITIALS;
-  paperTimeZone.textContent = entry.timeZone || USER_TIME_ZONE;
   paperRows.innerHTML = "";
 
   const moods = [
@@ -1199,8 +1116,6 @@ function restoreScreenLayout() {
   paperPrintSheet.setAttribute("aria-hidden", "true");
 }
 
-saveEntryBtn.addEventListener("click", saveCurrentEntry);
-mobileSaveBtn.addEventListener("click", saveCurrentEntry);
 clearFormBtn.addEventListener("click", newDay);
 clearTodayBtn.addEventListener("click", clearToday);
 exportBtn.addEventListener("click", downloadJSON);
@@ -1212,40 +1127,29 @@ previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -
 nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
 monthJump.addEventListener("change", () => jumpToMonth(monthJump.value));
-dateJump.addEventListener("change", () => openDate(dateJump.value));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
-  if (!event.target.matches("#entryDate, #monthJump, #dateJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
+  if (!event.target.matches("#entryDate, #monthJump")) scheduleAutoSave();
 });
 document.querySelector(".app-shell").addEventListener("change", (event) => {
-  if (!event.target.matches(".photo-input, #entryDate, #monthJump, #dateJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
+  if (!event.target.matches(".photo-input, #entryDate, #monthJump")) scheduleAutoSave();
 });
 blocksContainer.addEventListener("change", (event) => {
   if (event.target.matches(".photo-input")) addSelectedPhotos(event.target);
 });
-historySearch.addEventListener("input", renderHistory);
-historyMonth.addEventListener("change", renderHistory);
-clearFiltersBtn.addEventListener("click", () => {
-  historySearch.value = "";
-  historyMonth.value = "";
-  renderHistory();
-});
 window.addEventListener("beforeprint", preparePrintLayout);
 window.addEventListener("afterprint", restoreScreenLayout);
 refreshBtn.addEventListener("click", async () => {
-  await renderHistory();
+  await openDate(activeDate, { saveCurrent: false });
   setStatus("Private cloud data refreshed.");
 });
 async function startApp() {
   createBlocks();
-  updateGlobalClock();
-  window.setInterval(updateGlobalClock, 30_000);
   applyRememberedDetails();
   updateFormProgress();
   updateCalendarNotice();
   const connected = await initBackend();
   if (!connected) return;
-  await renderHistory();
   if (new URLSearchParams(window.location.search).get("sample") === "1") {
     fillSample();
   } else {

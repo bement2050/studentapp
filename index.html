@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20" />
+    <link rel="stylesheet" href="styles.css?v=21" />
   </head>
   <body>
     <main class="app-shell">
@@ -25,20 +25,14 @@
           <h1>Today's Journal</h1>
           <p class="hero-subtitle">A simple, calm way to capture the moments that matter.</p>
         </div>
-        <div class="global-clock" aria-label="Current local date and time">
-          <time id="globalDateTime"></time>
-          <span id="globalTimeZone"></span>
-        </div>
         <div class="hero-actions">
           <button id="clearFormBtn" class="btn btn-ghost" type="button">New day</button>
           <button id="clearTodayBtn" class="btn btn-clear" type="button">Clear today</button>
-          <button id="saveEntryBtn" class="btn btn-primary" type="button">Save day</button>
         </div>
       </header>
 
       <nav class="app-tabs" aria-label="Journal sections">
         <a class="app-tab is-active" href="#todayEntry">Today's entry</a>
-        <a class="app-tab" href="#historyPanel">Past days</a>
         <button id="printTabBtn" class="app-tab app-tab-print" type="button">Print</button>
       </nav>
 
@@ -49,16 +43,7 @@
         </div>
         <label>
           Student name
-          <input id="childName" type="text" value="Sammy" placeholder="e.g. Sammy" maxlength="60" autocomplete="name" enterkeyhint="next" list="childNames" required />
-          <datalist id="childNames"></datalist>
-        </label>
-        <label>
-          Date <span class="field-hint">Automatically set to today</span>
-          <input id="entryDate" type="date" required />
-        </label>
-        <label>
-          Time <span class="field-hint" id="entryTimeZone"></span>
-          <input id="entryTime" type="time" required />
+          <input id="childName" type="text" value="Sammy" placeholder="e.g. Sammy" maxlength="60" autocomplete="name" enterkeyhint="next" required />
         </label>
         <label>
           Staff initials
@@ -74,7 +59,7 @@
         </label>
         <label class="date-jump">
           <span>Choose day</span>
-          <input id="dateJump" type="date" />
+          <input id="entryDate" type="date" required />
         </label>
         <button id="todayBtn" class="date-nav-btn" type="button">Today</button>
         <button id="nextDayBtn" class="date-nav-btn" type="button" aria-label="Open next day">Next day →</button>
@@ -118,32 +103,6 @@
 
       <section id="blocksContainer" class="blocks" aria-live="polite"></section>
 
-      <section id="historyPanel" class="panel history-panel">
-        <div class="history-heading">
-          <div>
-            <p class="eyebrow">03 · Look back</p>
-            <h2>Past days <span id="historyCount" class="history-count">0</span></h2>
-          </div>
-        </div>
-        <div class="history-filters">
-          <label class="history-search">
-            <span class="sr-only">Search past days</span>
-            <span class="search-icon" aria-hidden="true">⌕</span>
-            <input id="historySearch" type="search" placeholder="Search child, staff, or notes" autocomplete="off" />
-          </label>
-          <label>
-            <span class="sr-only">Filter past days by month</span>
-            <input id="historyMonth" type="month" aria-label="Filter past days by month" />
-          </label>
-          <button id="clearFiltersBtn" class="text-btn" type="button">Clear filters</button>
-        </div>
-        <ul id="historyList" class="history-list"></ul>
-      </section>
-
-      <footer class="print-footer">
-        <span>Today's Journal · Plano ISD</span>
-        <span id="printDate"></span>
-      </footer>
     </main>
 
     <section id="paperPrintSheet" class="paper-print-sheet" aria-hidden="true">
@@ -153,14 +112,10 @@
       </header>
       <div class="paper-sheet-meta">
         <span>Date of: <strong id="paperEntryDate"></strong></span>
-        <span>Time: <strong id="paperEntryTime"></strong></span>
         <span>Staff: <strong id="paperStaffInitials"></strong></span>
       </div>
       <div id="paperRows" class="paper-rows"></div>
-      <footer class="paper-sheet-footer">
-        <span>Speech and O.T. supports are marked for each check-in.</span>
-        <span id="paperTimeZone"></span>
-      </footer>
+      <footer class="paper-sheet-footer">Speech and O.T. supports are marked for each check-in.</footer>
     </section>
 
     <template id="blockTemplate">
@@ -224,14 +179,6 @@
       </article>
     </template>
 
-    <div class="mobile-save-bar">
-      <div>
-        <strong>Today's Journal</strong>
-        <span id="mobileSaveStatus">Autosave is on</span>
-      </div>
-      <button id="mobileSaveBtn" class="btn btn-primary" type="button">Save now</button>
-    </div>
-
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=21"></script>
   </body>
 </html>

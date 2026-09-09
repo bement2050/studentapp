@@ -19,7 +19,7 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Camera/photo attachments for every check-in (up to 8 per section)
 - Searchable past-day archive with month filtering, reopening, editing, and individual deletion
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
-- Prominent Today, Past days, and Print tabs on phone and desktop
+- Simple Today's entry and Print tabs on phone and desktop
 - Automatic localized date/time with the device's global IANA timezone
 
 ## Run Locally
