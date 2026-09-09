@@ -54,3 +54,14 @@ Then visit `http://localhost:4173`. Use **Fill sample** to preview a completed d
 - Photos are resized before being stored in the browser's device database. JSON export includes the photos as embedded data so the backup is complete.
 - If all 3 users share one device/browser, this is perfect.
 - If each person uses a different device and you want shared live data, the next step is adding Firebase/Supabase.
+
+## Supabase Central Storage Setup
+
+1. Open the Supabase project and select **SQL Editor**.
+2. Create a new query, paste all of `supabase-setup.sql`, and click **Run**.
+3. In **Authentication -> URL Configuration**, set the site URL to
+   `https://bement2050.github.io/studentapp/` and add the same value as a redirect URL.
+4. The policies in the setup file limit access to `bemnetgizachew@gmail.com`.
+
+The public/publishable browser key is used by the web app. Never place a secret or
+service-role key in this repository.
