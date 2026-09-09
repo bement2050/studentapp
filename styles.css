@@ -257,9 +257,9 @@ button:focus-visible {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: .85rem;
-  padding: .9rem 1rem;
+  padding: .6rem .8rem;
   border: 1px solid #bfd8ce;
-  border-radius: 16px;
+  border-radius: 13px;
   background: var(--soft-green);
   color: #174f44;
 }
@@ -279,15 +279,56 @@ button:focus-visible {
 .calendar-icon {
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 12px;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9px;
   background: rgba(255,255,255,.72);
 }
 
 .calendar-notice p {
   margin: .1rem 0 0;
-  font-size: .88rem;
+  font-size: .78rem;
+}
+
+.date-navigator {
+  display: grid;
+  grid-template-columns: auto minmax(170px, 1fr) auto auto;
+  align-items: end;
+  gap: .55rem;
+  padding: .55rem;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255,255,255,.65);
+}
+
+.date-nav-btn {
+  min-height: 44px;
+  padding: .5rem .75rem;
+  border: 1px solid #adc4ba;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--green);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.date-nav-btn:hover {
+  background: var(--soft-green);
+}
+
+.month-jump {
+  grid-template-columns: auto minmax(130px, 190px);
+  align-items: center;
+  justify-content: center;
+  font-size: .78rem;
+}
+
+.month-jump input {
+  min-height: 44px;
+  padding: .45rem .6rem;
+  border: 1px solid #adc4ba;
+  border-radius: 10px;
+  background: #fff;
 }
 
 .calendar-notice a {
@@ -824,6 +865,21 @@ fieldset label input:checked + span {
     align-items: start;
   }
 
+  .date-navigator {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .month-jump {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    grid-template-columns: auto 1fr;
+  }
+
+  .date-nav-btn {
+    padding-inline: .4rem;
+    font-size: .78rem;
+  }
+
   .calendar-notice a {
     grid-column: 2;
   }
@@ -1007,6 +1063,7 @@ fieldset label input:checked + span {
   }
 
   .hero-actions,
+  .date-navigator,
   .calendar-notice,
   .status-row,
   .section-heading,

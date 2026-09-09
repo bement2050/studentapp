@@ -12,6 +12,8 @@ It stores data in the browser (local storage), so there are no server costs.
 - Automatic draft saving and recovery
 - Remembers the last child name and staff initials
 - Plano ISD 2026-27 holiday, break, and early-release notices
+- Previous/next day controls plus a month picker for quickly reviewing saved days
+- Compact upcoming-holiday banner and automatic "No school" entries on closure days
 - Phone-friendly controls and a fixed mobile save button
 - Offline support after the first visit
 - Camera/photo attachments for every check-in (up to 8 per section)

@@ -47,6 +47,10 @@ const entryTimeInput = document.getElementById("entryTime");
 const entryTimeZone = document.getElementById("entryTimeZone");
 const globalDateTime = document.getElementById("globalDateTime");
 const globalTimeZone = document.getElementById("globalTimeZone");
+const previousDayBtn = document.getElementById("previousDayBtn");
+const nextDayBtn = document.getElementById("nextDayBtn");
+const todayBtn = document.getElementById("todayBtn");
+const monthJump = document.getElementById("monthJump");
 const blocksContainer = document.getElementById("blocksContainer");
 const historyList = document.getElementById("historyList");
 const syncStatus = document.getElementById("syncStatus");
@@ -88,6 +92,7 @@ let autoSaveTimer = null;
 let isHydrating = false;
 let photoDatabasePromise = null;
 let currentPhotoEntryId = null;
+let activeDate = todayISO();
 const previewUrls = new Set();
 
 function todayISO() {
@@ -222,19 +227,28 @@ function shortDate(dateString) {
 function updateCalendarNotice() {
   const selectedDate = entryDateInput.value || todayISO();
   const event = calendarEventFor(selectedDate);
-  const day = new Date(`${selectedDate}T12:00:00`).getDay();
   calendarNotice.classList.toggle("is-closure", event?.kind === "holiday");
   calendarNotice.classList.toggle("is-early", event?.kind === "early");
 
   if (event) {
     calendarNoticeTitle.textContent = event.title;
     calendarNoticeText.textContent = event.description;
-  } else if (day === 0 || day === 6) {
-    calendarNoticeTitle.textContent = "Weekend";
-    calendarNoticeText.textContent = "No regular Plano ISD classes are scheduled.";
   } else {
-    calendarNoticeTitle.textContent = "Regular school day";
-    calendarNoticeText.textContent = "No Plano ISD closure is listed for this date.";
+    const upcoming = PISD_CALENDAR.find((item) =>
+      item.kind === "holiday" && item.end >= todayISO()
+    );
+    if (upcoming) {
+      const start = shortDate(upcoming.start);
+      const end = upcoming.end !== upcoming.start ? `–${shortDate(upcoming.end)}` : "";
+      const daysAway = Math.max(0, Math.ceil(
+        (new Date(`${upcoming.start}T12:00:00`) - new Date(`${todayISO()}T12:00:00`)) / 86_400_000
+      ));
+      calendarNoticeTitle.textContent = `Upcoming: ${upcoming.title}`;
+      calendarNoticeText.textContent = `${start}${end} · ${daysAway === 0 ? "today" : `in ${daysAway} days`}`;
+    } else {
+      calendarNoticeTitle.textContent = "Plano ISD calendar";
+      calendarNoticeText.textContent = "No more closures are listed for this school year.";
+    }
   }
 
   const upcoming = PISD_CALENDAR.find((item) => item.kind !== "school" && item.end >= todayISO());
@@ -593,6 +607,8 @@ function writeForm(entry) {
   clearForm(true);
   childNameInput.value = entry.childName || "";
   entryDateInput.value = entry.date || todayISO();
+  activeDate = entryDateInput.value;
+  monthJump.value = activeDate.slice(0, 7);
   entryTimeInput.value = entry.entryTime || entry.blocks?.[0]?.entryTime || currentTimeISO();
   staffInitialsInput.value = entry.staffInitials || "";
 
@@ -634,6 +650,9 @@ function clearForm(keepHeader = false) {
   }
 
   entryDateInput.value = todayISO();
+  activeDate = entryDateInput.value;
+  monthJump.value = activeDate.slice(0, 7);
+  entryTimeInput.value = currentTimeISO();
 
   document.querySelectorAll('.day-block input[type="radio"]').forEach((radio) => {
     radio.checked = false;
@@ -674,6 +693,81 @@ function updateFormProgress() {
 
   completionText.textContent = `${started} of ${blocks.length} check-ins started`;
   progressBar.style.width = `${blocks.length ? (started / blocks.length) * 100 : 0}%`;
+}
+
+function formHasMeaningfulContent() {
+  return [...document.querySelectorAll(".day-block")].some((block) =>
+    block.querySelector('input[type="radio"]:checked')
+    || block.querySelector('input[type="checkbox"]:checked')
+    || block.querySelector("textarea").value.trim()
+    || block.querySelector(".photo-item")
+  );
+}
+
+function fillHolidayDay(event) {
+  document.querySelectorAll(".day-block").forEach((block, index) => {
+    block.querySelector("textarea").value = index === 0
+      ? `${event.title} - ${event.description}`
+      : `No school - ${event.title}.`;
+  });
+  updateFormProgress();
+}
+
+async function openDate(targetDate, { saveCurrent = true } = {}) {
+  if (!targetDate) return;
+  window.clearTimeout(autoSaveTimer);
+  const previousDate = activeDate;
+
+  if (saveCurrent && previousDate && targetDate !== previousDate && formHasMeaningfulContent()) {
+    entryDateInput.value = previousDate;
+    await persistCurrentForm();
+  }
+
+  const studentName = childNameInput.value.trim() || DEFAULT_CHILD_NAME;
+  const entryId = keyForEntry(targetDate, studentName);
+  const entries = await fetchEntries();
+  const savedEntry = entries.find((entry) => entry.id === entryId);
+
+  if (savedEntry) {
+    writeForm(savedEntry);
+    setStatus(`Opened ${formatEntryDate(targetDate)}`);
+    return;
+  }
+
+  isHydrating = true;
+  clearForm(true);
+  entryDateInput.value = targetDate;
+  activeDate = targetDate;
+  monthJump.value = targetDate.slice(0, 7);
+  entryTimeInput.value = currentTimeISO();
+  await loadPhotosForEntry(entryId);
+  const holiday = calendarEventFor(targetDate);
+  if (holiday?.kind === "holiday") fillHolidayDay(holiday);
+  updateCalendarNotice();
+  isHydrating = false;
+
+  if (holiday?.kind === "holiday") {
+    await persistCurrentForm();
+    setStatus(`${holiday.title} filled automatically - no school`);
+  } else {
+    setStatus(`No saved entry for ${formatEntryDate(targetDate)} - ready to add`);
+  }
+}
+
+function dateOffset(dateString, amount) {
+  const date = new Date(`${dateString}T12:00:00`);
+  date.setDate(date.getDate() + amount);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function jumpToMonth(value) {
+  if (!value) return;
+  const [year, month] = value.split("-").map(Number);
+  const currentDay = Number((activeDate || todayISO()).slice(8, 10));
+  const lastDay = new Date(year, month, 0).getDate();
+  const day = String(Math.min(currentDay, lastDay)).padStart(2, "0");
+  openDate(`${value}-${day}`);
 }
 
 function savePreferences(entry) {
@@ -723,7 +817,8 @@ function applyRememberedDetails() {
   childNameInput.value = DEFAULT_CHILD_NAME;
   staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
   entryDateInput.value = todayISO();
-  entryTimeInput.value = currentTimeISO();
+  activeDate = entryDateInput.value;
+  monthJump.value = activeDate.slice(0, 7);
   entryTimeInput.value = currentTimeISO();
 }
 
@@ -938,10 +1033,9 @@ async function renderHistory() {
     loadBtn.type = "button";
     loadBtn.className = "history-load";
     loadBtn.textContent = "Open →";
-    loadBtn.addEventListener("click", () => {
-      writeForm(entry);
+    loadBtn.addEventListener("click", async () => {
+      await openDate(entry.date);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      setStatus("Saved day opened");
     });
 
     const deleteBtn = document.createElement("button");
@@ -1131,11 +1225,16 @@ exportBtn.addEventListener("click", downloadJSON);
 printBtn.addEventListener("click", printCurrentDay);
 document.getElementById("sampleBtn").addEventListener("click", fillSample);
 copyLastBtn.addEventListener("click", copyLastDay);
+previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
+nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
+todayBtn.addEventListener("click", () => openDate(todayISO()));
+monthJump.addEventListener("change", () => jumpToMonth(monthJump.value));
+entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
-  if (!event.target.closest(".history-panel")) scheduleAutoSave();
+  if (!event.target.matches("#entryDate, #monthJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
 });
 document.querySelector(".app-shell").addEventListener("change", (event) => {
-  if (!event.target.matches(".photo-input") && !event.target.closest(".history-panel")) scheduleAutoSave();
+  if (!event.target.matches(".photo-input, #entryDate, #monthJump") && !event.target.closest(".history-panel")) scheduleAutoSave();
 });
 blocksContainer.addEventListener("change", (event) => {
   if (event.target.matches(".photo-input")) addSelectedPhotos(event.target);
@@ -1169,8 +1268,8 @@ async function startApp() {
   await renderHistory();
   if (new URLSearchParams(window.location.search).get("sample") === "1") {
     fillSample();
-  } else {
-    restoreDraft();
+  } else if (!restoreDraft()) {
+    await openDate(todayISO(), { saveCurrent: false });
   }
 
   if ("serviceWorker" in navigator && window.location.protocol.startsWith("http")) {

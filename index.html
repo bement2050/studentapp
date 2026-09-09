@@ -60,6 +60,16 @@
         </label>
       </section>
 
+      <nav class="date-navigator" aria-label="Browse daily records">
+        <button id="previousDayBtn" class="date-nav-btn" type="button" aria-label="Open previous day">← Previous day</button>
+        <label class="month-jump">
+          <span>Jump to month</span>
+          <input id="monthJump" type="month" />
+        </label>
+        <button id="todayBtn" class="date-nav-btn" type="button">Today</button>
+        <button id="nextDayBtn" class="date-nav-btn" type="button" aria-label="Open next day">Next day →</button>
+      </nav>
+
       <aside id="calendarNotice" class="calendar-notice" aria-live="polite">
         <div class="calendar-icon" aria-hidden="true">📅</div>
         <div>
