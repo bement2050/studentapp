@@ -1,7 +1,6 @@
 const MAX_PHOTOS_PER_BLOCK = 8;
 const DEFAULT_CHILD_NAME = "Sammy";
 const DEFAULT_STAFF_INITIALS = "JK";
-const MIN_JOURNAL_DATE = "2026-08-11";
 const BLOCK_TITLES = [
   "Morning",
   "Afternoon"
@@ -40,7 +39,6 @@ const staffInitialsInput = document.getElementById("staffInitials");
 const previousDayBtn = document.getElementById("previousDayBtn");
 const nextDayBtn = document.getElementById("nextDayBtn");
 const todayBtn = document.getElementById("todayBtn");
-const monthJump = document.getElementById("monthJump");
 const blocksContainer = document.getElementById("blocksContainer");
 const syncStatus = document.getElementById("syncStatus");
 const calendarNotice = document.getElementById("calendarNotice");
@@ -56,7 +54,6 @@ const paperEntryDate = document.getElementById("paperEntryDate");
 const paperStaffInitials = document.getElementById("paperStaffInitials");
 const paperRows = document.getElementById("paperRows");
 
-const clearFormBtn = document.getElementById("clearFormBtn");
 const clearTodayBtn = document.getElementById("clearTodayBtn");
 
 const blockTemplate = document.getElementById("blockTemplate");
@@ -75,20 +72,8 @@ function todayISO() {
   return localDate.toISOString().slice(0, 10);
 }
 
-function clampJournalDate(dateString) {
-  if (dateString < MIN_JOURNAL_DATE) return MIN_JOURNAL_DATE;
-  if (dateString > todayISO()) return todayISO();
-  return dateString;
-}
-
 function updateDateNavigationState() {
   const current = entryDateInput.value || todayISO();
-  entryDateInput.min = MIN_JOURNAL_DATE;
-  entryDateInput.max = todayISO();
-  monthJump.min = MIN_JOURNAL_DATE.slice(0, 7);
-  monthJump.max = todayISO().slice(0, 7);
-  previousDayBtn.disabled = current <= MIN_JOURNAL_DATE;
-  nextDayBtn.disabled = current >= todayISO();
   todayBtn.disabled = current === todayISO();
 }
 
@@ -574,7 +559,6 @@ function writeForm(entry) {
   childNameInput.value = entry.childName || "";
   entryDateInput.value = entry.date || todayISO();
   activeDate = entryDateInput.value;
-  monthJump.value = activeDate.slice(0, 7);
   staffInitialsInput.value = entry.staffInitials || "";
 
   const blockElements = document.querySelectorAll(".day-block");
@@ -616,7 +600,6 @@ function clearForm(keepHeader = false) {
 
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
-  monthJump.value = activeDate.slice(0, 7);
 
   document.querySelectorAll(".day-block .mood-row input").forEach((input) => {
     input.checked = false;
@@ -679,7 +662,6 @@ function fillHolidayDay(event) {
 
 async function openDate(targetDate, { saveCurrent = true } = {}) {
   if (!targetDate) return;
-  targetDate = clampJournalDate(targetDate);
   window.clearTimeout(autoSaveTimer);
   const previousDate = activeDate;
 
@@ -703,7 +685,6 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
   clearForm(true);
   entryDateInput.value = targetDate;
   activeDate = targetDate;
-  monthJump.value = targetDate.slice(0, 7);
   await loadPhotosForEntry(entryId);
   const holiday = calendarEventFor(targetDate);
   if (holiday?.kind === "holiday") fillHolidayDay(holiday);
@@ -722,16 +703,7 @@ function dateOffset(dateString, amount) {
   const date = new Date(`${dateString}T12:00:00`);
   date.setDate(date.getDate() + amount);
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return clampJournalDate(localDate.toISOString().slice(0, 10));
-}
-
-function jumpToMonth(value) {
-  if (!value) return;
-  const [year, month] = value.split("-").map(Number);
-  const currentDay = Number((activeDate || todayISO()).slice(8, 10));
-  const lastDay = new Date(year, month, 0).getDate();
-  const day = String(Math.min(currentDay, lastDay)).padStart(2, "0");
-  openDate(`${value}-${day}`);
+  return localDate.toISOString().slice(0, 10);
 }
 
 async function persistCurrentForm({ manual = false } = {}) {
@@ -770,16 +742,6 @@ function applyRememberedDetails() {
   staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
-  monthJump.value = activeDate.slice(0, 7);
-}
-
-function newDay() {
-  window.clearTimeout(autoSaveTimer);
-  clearForm(false);
-  childNameInput.value = DEFAULT_CHILD_NAME;
-  staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
-  entryDateInput.value = todayISO();
-  setStatus("New day ready — name and staff details remembered");
 }
 
 async function clearToday() {
@@ -1132,19 +1094,17 @@ function restoreScreenLayout() {
   paperPrintSheet.setAttribute("aria-hidden", "true");
 }
 
-clearFormBtn.addEventListener("click", newDay);
 clearTodayBtn.addEventListener("click", clearToday);
 printBtn.addEventListener("click", printCurrentDay);
 previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
 nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
-monthJump.addEventListener("change", () => jumpToMonth(monthJump.value));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
-  if (!event.target.matches("#entryDate, #monthJump")) scheduleAutoSave();
+  if (!event.target.matches("#entryDate")) scheduleAutoSave();
 });
 document.querySelector(".app-shell").addEventListener("change", (event) => {
-  if (!event.target.matches(".photo-input, #entryDate, #monthJump")) scheduleAutoSave();
+  if (!event.target.matches(".photo-input, #entryDate")) scheduleAutoSave();
 });
 blocksContainer.addEventListener("change", (event) => {
   if (event.target.matches(".photo-input")) addSelectedPhotos(event.target);

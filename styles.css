@@ -117,6 +117,21 @@ h1 {
   flex-wrap: wrap;
 }
 
+.hero-date-picker {
+  flex: 0 0 150px;
+  gap: .2rem;
+  color: rgba(255,255,255,.82);
+  font-size: .72rem;
+}
+
+.hero-date-picker input {
+  min-height: 42px;
+  padding: .45rem .55rem;
+  border: 1px solid rgba(255,255,255,.55);
+  background: #fff;
+  color: var(--ink);
+}
+
 .panel {
   border: 1px solid var(--line);
   min-width: 0;
@@ -290,22 +305,11 @@ button:focus-visible {
   font-size: .78rem;
 }
 
-.date-picker-strip {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .55rem;
-  width: min(100%, 560px);
-  padding: .55rem;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  background: rgba(255,255,255,.65);
-}
-
 .date-navigator {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: .55rem;
-  width: min(100%, 560px);
+  width: 100%;
   padding: .55rem;
   border: 1px solid var(--line);
   border-radius: 15px;
@@ -330,23 +334,6 @@ button:focus-visible {
 .date-nav-btn:disabled {
   cursor: not-allowed;
   opacity: .45;
-}
-
-.month-jump,
-.date-jump {
-  grid-template-columns: auto minmax(130px, 190px);
-  align-items: center;
-  justify-content: center;
-  font-size: .78rem;
-}
-
-.month-jump input,
-.date-jump input {
-  min-height: 44px;
-  padding: .45rem .6rem;
-  border: 1px solid #adc4ba;
-  border-radius: 10px;
-  background: #fff;
 }
 
 .calendar-notice a {
@@ -836,6 +823,11 @@ fieldset label input:checked + span {
     padding: 1.5rem;
   }
 
+  .hero-date-picker {
+    width: 100%;
+    max-width: 220px;
+  }
+
   .app-shell {
     width: calc(100% - 1rem);
     max-width: 1180px;
@@ -892,15 +884,6 @@ fieldset label input:checked + span {
 
   .date-navigator {
     grid-template-columns: repeat(3, 1fr);
-  }
-
-  .date-picker-strip {
-    grid-template-columns: 1fr;
-  }
-
-  .month-jump,
-  .date-jump {
-    grid-template-columns: 90px 1fr;
   }
 
   .date-nav-btn {
@@ -1092,7 +1075,6 @@ fieldset label input:checked + span {
 
   .hero-actions,
   .app-tabs,
-  .date-picker-strip,
   .date-navigator,
   .calendar-notice,
   .status-row,

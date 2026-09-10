@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=22" />
+    <link rel="stylesheet" href="styles.css?v=23" />
   </head>
   <body>
     <main class="app-shell">
@@ -25,8 +25,11 @@
           <h1>Today's Journal</h1>
           <p class="hero-subtitle">A simple, calm way to capture the moments that matter.</p>
         </div>
+        <label class="hero-date-picker">
+          <span>Date</span>
+          <input id="entryDate" type="date" required />
+        </label>
         <div class="hero-actions">
-          <button id="clearFormBtn" class="btn btn-ghost" type="button">New day</button>
           <button id="clearTodayBtn" class="btn btn-clear" type="button">Clear today</button>
           <button id="printBtn" class="btn btn-ghost" type="button">Print</button>
         </div>
@@ -46,23 +49,6 @@
           <input id="staffInitials" type="text" value="JK" placeholder="e.g. JK" maxlength="8" autocomplete="off" />
         </label>
       </section>
-
-      <section class="date-picker-strip" aria-label="Choose a journal date">
-        <label class="month-jump">
-          <span>Month</span>
-          <input id="monthJump" type="month" />
-        </label>
-        <label class="date-jump">
-          <span>Specific day</span>
-          <input id="entryDate" type="date" required />
-        </label>
-      </section>
-
-      <nav class="date-navigator" aria-label="Browse daily records">
-        <button id="previousDayBtn" class="date-nav-btn" type="button" aria-label="Open previous day">← Previous day</button>
-        <button id="todayBtn" class="date-nav-btn" type="button">Today</button>
-        <button id="nextDayBtn" class="date-nav-btn" type="button" aria-label="Open next day">Next day →</button>
-      </nav>
 
       <aside id="calendarNotice" class="calendar-notice" aria-live="polite">
         <div class="calendar-icon" aria-hidden="true">📅</div>
@@ -94,6 +80,12 @@
       </div>
 
       <section id="blocksContainer" class="blocks" aria-live="polite"></section>
+
+      <nav class="date-navigator" aria-label="Browse daily records">
+        <button id="previousDayBtn" class="date-nav-btn" type="button" aria-label="Open previous day">← Previous day</button>
+        <button id="todayBtn" class="date-nav-btn" type="button">Today</button>
+        <button id="nextDayBtn" class="date-nav-btn" type="button" aria-label="Open next day">Next day →</button>
+      </nav>
 
     </main>
 
@@ -171,6 +163,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=22"></script>
+    <script src="app.js?v=23"></script>
   </body>
 </html>

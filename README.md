@@ -11,12 +11,11 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Automatic saving to shared cloud storage
 - Remembers the last child name and staff initials
 - Plano ISD 2026-27 holiday, break, and early-release notices
-- Previous/next/today controls limited to the current school year, plus separate month and exact-date pickers
+- Compact date picker at the top and unlimited previous/next/today navigation at the bottom
 - Compact upcoming-holiday banner and automatic "No school" entries on closure days
-- Phone-friendly controls and a fixed mobile save button
+- Phone-friendly controls with automatic saving
 - Opens directly without a login for anyone who has the app link
 - Camera/photo attachments for every check-in (up to 8 per section)
-- Searchable past-day archive with month filtering, reopening, editing, and individual deletion
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
 - Small Print action at the top on phone and desktop
 - Automatic localized date/time with the device's global IANA timezone
@@ -33,7 +32,7 @@ You can also run it from a terminal:
 python -m http.server 4173
 ```
 
-Then visit `http://localhost:4173`. Use **Fill sample** to preview a completed day without saving it.
+Then visit `http://localhost:4173`.
 
 ## Deploy for Free (GitHub Pages)
 
