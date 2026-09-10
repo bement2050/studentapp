@@ -499,6 +499,37 @@ async function deleteEntry(entryId) {
   if (error) throw new Error(error.message);
 }
 
+function autoResizeNote(textArea) {
+  if (!textArea) return;
+  textArea.style.height = "auto";
+  textArea.style.height = `${textArea.scrollHeight}px`;
+}
+
+function setNoteEditState(block, isEditing) {
+  const textArea = block.querySelector("textarea");
+  const editButton = block.querySelector(".note-edit-btn");
+  const saveButton = block.querySelector(".note-save-btn");
+  if (!textArea || !editButton || !saveButton) return;
+
+  textArea.readOnly = !isEditing;
+  block.classList.toggle("is-editing-note", isEditing);
+  editButton.disabled = isEditing;
+  saveButton.disabled = !isEditing;
+  autoResizeNote(textArea);
+
+  if (isEditing) {
+    const at = textArea.value.length;
+    textArea.focus();
+    textArea.setSelectionRange(at, at);
+  }
+}
+
+async function saveBlockNote(block) {
+  setNoteEditState(block, false);
+  updateFormProgress();
+  return persistCurrentForm({ manual: true });
+}
+
 function createBlocks() {
   blocksContainer.innerHTML = "";
 
@@ -508,8 +539,14 @@ function createBlocks() {
     const blockTitle = clone.querySelector(".block-title");
     const badge = clone.querySelector(".badge");
     const textArea = clone.querySelector("textarea");
+    const editButton = clone.querySelector(".note-edit-btn");
+    const saveButton = clone.querySelector(".note-save-btn");
     blockTitle.textContent = title;
     badge.textContent = String(index + 1).padStart(2, "0");
+    textArea.readOnly = true;
+    if (editButton) editButton.disabled = false;
+    if (saveButton) saveButton.disabled = true;
+    autoResizeNote(textArea);
 
     const moodInputs = clone.querySelectorAll(".mood-row input");
     moodInputs.forEach((input) => {
@@ -580,7 +617,9 @@ function writeForm(entry) {
         || false;
     });
 
-    element.querySelector("textarea").value = block.notes || "";
+    const noteField = element.querySelector("textarea");
+    noteField.value = block.notes || "";
+    setNoteEditState(element, false);
     element.querySelector(".speech").checked = Boolean(block.speech);
     element.querySelector(".ot").checked = Boolean(block.ot);
   });
@@ -610,6 +649,8 @@ function clearForm(keepHeader = false) {
 
   document.querySelectorAll(".day-block textarea").forEach((textArea) => {
     textArea.value = "";
+    const block = textArea.closest(".day-block");
+    if (block) setNoteEditState(block, false);
   });
 
   clearPhotoGalleries();
@@ -625,6 +666,7 @@ function updateFormProgress() {
 
   blocks.forEach((block) => {
     const note = block.querySelector("textarea");
+    autoResizeNote(note);
     const hasContent = Boolean(
       block.querySelector(".mood-row input:checked")
       || block.querySelector('input[type="checkbox"]:checked')
@@ -652,9 +694,11 @@ function formHasMeaningfulContent() {
 
 function fillHolidayDay(event) {
   document.querySelectorAll(".day-block").forEach((block, index) => {
-    block.querySelector("textarea").value = index === 0
+    const noteField = block.querySelector("textarea");
+    noteField.value = index === 0
       ? `${event.title} - ${event.description}`
       : `No school - ${event.title}.`;
+    setNoteEditState(block, false);
   });
   updateFormProgress();
 }
@@ -1100,10 +1144,35 @@ nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
+  if (event.target.matches(".day-block textarea")) {
+    autoResizeNote(event.target);
+    updateFormProgress();
+    setStatus("Editing notes... tap Save on this check-in when done");
+    return;
+  }
   if (!event.target.matches("#entryDate")) scheduleAutoSave();
 });
 document.querySelector(".app-shell").addEventListener("change", (event) => {
   if (!event.target.matches(".photo-input, #entryDate")) scheduleAutoSave();
+});
+blocksContainer.addEventListener("click", async (event) => {
+  const editButton = event.target.closest(".note-edit-btn");
+  if (editButton) {
+    const block = editButton.closest(".day-block");
+    if (block) {
+      setNoteEditState(block, true);
+      setStatus("Notes unlocked for editing");
+    }
+    return;
+  }
+
+  const saveButton = event.target.closest(".note-save-btn");
+  if (saveButton) {
+    const block = saveButton.closest(".day-block");
+    if (!block) return;
+    const saved = await saveBlockNote(block);
+    if (saved) setStatus("✓ Note saved");
+  }
 });
 blocksContainer.addEventListener("change", (event) => {
   if (event.target.matches(".photo-input")) addSelectedPhotos(event.target);

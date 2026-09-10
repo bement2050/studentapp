@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=24" />
+    <link rel="stylesheet" href="styles.css?v=25" />
   </head>
   <body>
     <main class="app-shell">
@@ -130,8 +130,14 @@
         </fieldset>
 
         <label class="notes-wrap">
-          Notes about today
-          <textarea rows="4" placeholder="What happened during this part of the day?"></textarea>
+          <span class="notes-header">
+            <span>Notes about today</span>
+            <span class="notes-actions">
+              <button type="button" class="note-edit-btn" aria-label="Edit notes">Edit</button>
+              <button type="button" class="note-save-btn" aria-label="Save notes" disabled>Save</button>
+            </span>
+          </span>
+          <textarea rows="4" placeholder="What happened during this part of the day?" readonly></textarea>
           <span class="character-count">0 characters</span>
         </label>
 
@@ -163,6 +169,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=24"></script>
+    <script src="app.js?v=25"></script>
   </body>
 </html>
