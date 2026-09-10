@@ -539,6 +539,19 @@ function setNoteEditState(block, isEditing) {
   }
 }
 
+function setMoodLockState(block, isLocked) {
+  const moodFieldset = block.querySelector(".mood-row");
+  const moodButton = block.querySelector(".mood-lock-btn");
+  if (!moodFieldset || !moodButton) return;
+
+  moodFieldset.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.disabled = isLocked;
+  });
+  block.classList.toggle("is-mood-locked", isLocked);
+  moodButton.textContent = isLocked ? "Unlock" : "Lock";
+  moodButton.setAttribute("aria-label", isLocked ? "Unlock emotions" : "Lock emotions");
+}
+
 async function saveBlockNote(block) {
   setNoteEditState(block, false);
   updateFormProgress();
@@ -568,6 +581,8 @@ function createBlocks() {
       input.id = `${input.value}-${index}`;
       input.closest("label").setAttribute("for", input.id);
     });
+
+    setMoodLockState(article, true);
 
     article.dataset.blockIndex = String(index);
     blocksContainer.appendChild(clone);
@@ -635,6 +650,7 @@ function writeForm(entry) {
     const noteField = element.querySelector("textarea");
     noteField.value = block.notes || "";
     setNoteEditState(element, false);
+    setMoodLockState(element, true);
     element.querySelector(".speech").checked = Boolean(block.speech);
     element.querySelector(".ot").checked = Boolean(block.ot);
   });
@@ -665,7 +681,10 @@ function clearForm(keepHeader = false) {
   document.querySelectorAll(".day-block textarea").forEach((textArea) => {
     textArea.value = "";
     const block = textArea.closest(".day-block");
-    if (block) setNoteEditState(block, false);
+    if (block) {
+      setNoteEditState(block, false);
+      setMoodLockState(block, true);
+    }
   });
 
   clearPhotoGalleries();
@@ -1177,6 +1196,16 @@ document.querySelector(".app-shell").addEventListener("change", (event) => {
   if (!event.target.matches(".photo-input, #entryDate")) scheduleAutoSave();
 });
 blocksContainer.addEventListener("click", async (event) => {
+  const moodButton = event.target.closest(".mood-lock-btn");
+  if (moodButton) {
+    const block = moodButton.closest(".day-block");
+    if (!block) return;
+    const isLocked = block.classList.contains("is-mood-locked");
+    setMoodLockState(block, !isLocked);
+    setStatus(isLocked ? "Emotions unlocked for editing" : "Emotions locked");
+    return;
+  }
+
   const editButton = event.target.closest(".note-edit-btn");
   if (editButton) {
     const block = editButton.closest(".day-block");

@@ -110,7 +110,10 @@
         </div>
 
         <fieldset class="mood-row">
-          <legend>Emotions <small>Choose all that apply</small></legend>
+          <legend class="mood-legend">
+            <span>Emotions <small>Choose all that apply</small></span>
+            <button type="button" class="mood-lock-btn" aria-label="Unlock emotions">Unlock</button>
+          </legend>
           <label><input type="checkbox" value="happy" /> <span>😀 Happy</span></label>
           <label><input type="checkbox" value="sad" /> <span>😢 Sad</span></label>
           <label><input type="checkbox" value="silly" /> <span>😜 Silly</span></label>
@@ -169,6 +172,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=26"></script>
   </body>
 </html>
