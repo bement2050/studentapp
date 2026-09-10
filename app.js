@@ -849,6 +849,17 @@ function formatEntryDate(dateString) {
   }).format(date);
 }
 
+function createEmotionIcon(emotion) {
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  const icon = document.createElementNS(svgNamespace, "svg");
+  const use = document.createElementNS(svgNamespace, "use");
+  icon.classList.add("emotion-icon");
+  icon.setAttribute("aria-hidden", "true");
+  use.setAttribute("href", `#emotion-${emotion}`);
+  icon.appendChild(use);
+  return icon;
+}
+
 async function renderHistory() {
   const entries = await fetchEntries();
   historyList.innerHTML = "";
@@ -1023,14 +1034,14 @@ function preparePrintLayout() {
   paperRows.innerHTML = "";
 
   const moods = [
-    { value: "happy", face: "😀", label: "happy" },
-    { value: "sad", face: "😢", label: "sad" },
-    { value: "silly", face: "😜", label: "silly" },
-    { value: "mad", face: "😠", label: "mad" },
-    { value: "calm", face: "😌", label: "calm" },
-    { value: "excited", face: "🤩", label: "excited" },
-    { value: "tired", face: "😴", label: "tired" },
-    { value: "worried", face: "😟", label: "worried" }
+    { value: "happy", label: "happy" },
+    { value: "sad", label: "sad" },
+    { value: "silly", label: "silly" },
+    { value: "mad", label: "mad" },
+    { value: "calm", label: "calm" },
+    { value: "excited", label: "excited" },
+    { value: "tired", label: "tired" },
+    { value: "worried", label: "worried" }
   ];
   const activities = [
     { value: "art", icon: "🎨", label: "art" },
@@ -1061,10 +1072,9 @@ function preparePrintLayout() {
     const selectedMoods = new Set(block.moods?.length ? block.moods : [legacyMood].filter(Boolean));
     moods.forEach((mood) => {
       const choice = document.createElement("div");
-      const face = document.createElement("span");
+      const face = createEmotionIcon(mood.value);
       const label = document.createElement("small");
       choice.className = `paper-mood-choice${selectedMoods.has(mood.value) ? " is-selected" : ""}`;
-      face.textContent = mood.face;
       label.textContent = mood.label;
       choice.append(face, label);
       moodChoices.appendChild(choice);

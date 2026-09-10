@@ -14,9 +14,64 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=26" />
+    <link rel="stylesheet" href="styles.css?v=27" />
   </head>
   <body>
+    <svg class="emotion-symbols" aria-hidden="true">
+      <defs>
+        <g id="boy-face-base">
+          <circle cx="7" cy="25" r="4" fill="#a96543" />
+          <circle cx="41" cy="25" r="4" fill="#a96543" />
+          <circle cx="24" cy="24" r="18" fill="#b97850" />
+          <path d="M7 21C5 11 13 4 24 4c12 0 20 8 17 18-3-5-6-4-8-7-3 4-6-1-9 2-3-4-6 1-9-2-2 3-5 2-8 6Z" fill="#251812" />
+          <path d="M23 24.5c-.7 2-1 3.2.8 3.5" fill="none" stroke="#8b4f35" stroke-linecap="round" />
+        </g>
+        <symbol id="emotion-happy" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <path d="M14 23q3-4 6 0M28 23q3-4 6 0M16 31q8 8 16 0" fill="none" stroke="#2a1915" stroke-width="2.2" stroke-linecap="round" />
+        </symbol>
+        <symbol id="emotion-sad" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <circle cx="17" cy="23" r="1.8" fill="#2a1915" /><circle cx="31" cy="23" r="1.8" fill="#2a1915" />
+          <path d="M17 35q7-7 14 0" fill="none" stroke="#2a1915" stroke-width="2.2" stroke-linecap="round" />
+          <path d="M34 26c2 3 2 5 0 6-2-1-2-3 0-6Z" fill="#79b9df" />
+        </symbol>
+        <symbol id="emotion-silly" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <path d="M14 23q3-3 6 0" fill="none" stroke="#2a1915" stroke-width="2.2" stroke-linecap="round" />
+          <circle cx="31" cy="22" r="2" fill="#2a1915" />
+          <path d="M17 30q7 4 14 0c0 7-14 7-14 0Z" fill="#fff" stroke="#2a1915" stroke-width="1.6" />
+          <path d="M23 34q3 5 6 0" fill="#dc6f87" stroke="#2a1915" stroke-width="1.2" />
+        </symbol>
+        <symbol id="emotion-mad" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <path d="m14 19 6 2m14-2-6 2" fill="none" stroke="#2a1915" stroke-width="2.3" stroke-linecap="round" />
+          <circle cx="18" cy="24" r="1.7" fill="#2a1915" /><circle cx="30" cy="24" r="1.7" fill="#2a1915" />
+          <path d="M17 34q7-5 14 0" fill="none" stroke="#2a1915" stroke-width="2.2" stroke-linecap="round" />
+        </symbol>
+        <symbol id="emotion-calm" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <path d="M14 23q3 3 6 0m8 0q3 3 6 0M18 31q6 5 12 0" fill="none" stroke="#2a1915" stroke-width="2.1" stroke-linecap="round" />
+        </symbol>
+        <symbol id="emotion-excited" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <circle cx="17" cy="22" r="3" fill="#fff" /><circle cx="31" cy="22" r="3" fill="#fff" />
+          <circle cx="17" cy="22" r="1.6" fill="#2a1915" /><circle cx="31" cy="22" r="1.6" fill="#2a1915" />
+          <path d="M17 30q7-3 14 0c-1 9-13 9-14 0Z" fill="#fff" stroke="#2a1915" stroke-width="1.8" />
+        </symbol>
+        <symbol id="emotion-tired" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <path d="M14 23h6m8 0h6M21 33q3-3 6 0" fill="none" stroke="#2a1915" stroke-width="2.1" stroke-linecap="round" />
+          <text x="36" y="17" fill="#4d6b82" font-size="8" font-weight="700">z</text>
+        </symbol>
+        <symbol id="emotion-worried" viewBox="0 0 48 48">
+          <use href="#boy-face-base" />
+          <path d="m14 20 6-2m8 0 6 2" fill="none" stroke="#2a1915" stroke-width="2" stroke-linecap="round" />
+          <circle cx="18" cy="23" r="1.8" fill="#2a1915" /><circle cx="30" cy="23" r="1.8" fill="#2a1915" />
+          <path d="M17 34q3-5 7 0 4-5 7 0" fill="none" stroke="#2a1915" stroke-width="2" stroke-linecap="round" />
+        </symbol>
+      </defs>
+    </svg>
     <main class="app-shell">
       <header class="hero">
         <div class="brand-mark" aria-hidden="true">☀</div>
@@ -93,14 +148,14 @@
             <span>Emotions <small>Choose all that apply</small></span>
             <button type="button" class="mood-lock-btn" aria-label="Edit emotions">Edit</button>
           </legend>
-          <label><input type="checkbox" value="happy" /> <span>😀 Happy</span></label>
-          <label><input type="checkbox" value="sad" /> <span>😢 Sad</span></label>
-          <label><input type="checkbox" value="silly" /> <span>😜 Silly</span></label>
-          <label><input type="checkbox" value="mad" /> <span>😠 Mad</span></label>
-          <label><input type="checkbox" value="calm" /> <span>😌 Calm</span></label>
-          <label><input type="checkbox" value="excited" /> <span>🤩 Excited</span></label>
-          <label><input type="checkbox" value="tired" /> <span>😴 Tired</span></label>
-          <label><input type="checkbox" value="worried" /> <span>😟 Worried</span></label>
+          <label><input type="checkbox" value="happy" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-happy"></use></svg>Happy</span></label>
+          <label><input type="checkbox" value="sad" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-sad"></use></svg>Sad</span></label>
+          <label><input type="checkbox" value="silly" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-silly"></use></svg>Silly</span></label>
+          <label><input type="checkbox" value="mad" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-mad"></use></svg>Mad</span></label>
+          <label><input type="checkbox" value="calm" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-calm"></use></svg>Calm</span></label>
+          <label><input type="checkbox" value="excited" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-excited"></use></svg>Excited</span></label>
+          <label><input type="checkbox" value="tired" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-tired"></use></svg>Tired</span></label>
+          <label><input type="checkbox" value="worried" /> <span><svg class="emotion-icon" aria-hidden="true"><use href="#emotion-worried"></use></svg>Worried</span></label>
         </fieldset>
 
         <fieldset class="activity-row">
@@ -151,6 +206,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
   </body>
 </html>

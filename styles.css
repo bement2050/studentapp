@@ -29,6 +29,13 @@ body {
     var(--bg);
 }
 
+.emotion-symbols {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .app-shell {
   width: min(1180px, 92vw);
   margin: .75rem auto 1.25rem;
@@ -434,6 +441,19 @@ fieldset label span {
   background: #fff;
   cursor: pointer;
   transition: 140ms ease;
+}
+
+.mood-row label > span {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.emotion-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
 }
 
 fieldset label input:checked + span {
@@ -1505,8 +1525,9 @@ h1 {
     border-radius: 5px;
   }
 
-  .paper-mood-choice span {
-    font-size: 20pt;
+  .paper-mood-choice .emotion-icon {
+    width: 20pt;
+    height: 20pt;
   }
 
   .paper-mood-choice small {
@@ -1708,10 +1729,10 @@ h1 {
     text-align: center;
   }
 
-  .paper-mood-choice span {
+  .paper-mood-choice .emotion-icon {
+    width: 25pt;
+    height: 25pt;
     filter: grayscale(1);
-    font-size: 25pt;
-    line-height: 1;
   }
 
   .paper-mood-choice small {
@@ -1905,8 +1926,9 @@ h1 {
     border-radius: 5px;
   }
 
-  .paper-mood-choice span {
-    font-size: 20pt;
+  .paper-mood-choice .emotion-icon {
+    width: 20pt;
+    height: 20pt;
   }
 
   .paper-mood-choice small {
