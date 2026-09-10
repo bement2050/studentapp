@@ -10,9 +10,9 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Save and load history from any device using the app link
 - Automatic saving to shared cloud storage
 - Remembers the last child name and staff initials
-- Plano ISD 2026-27 holiday, break, and early-release notices
+- Plano ISD 2026-27 calendar notices (holiday, break, early release)
 - Compact date picker at the top and unlimited previous/next/today navigation at the bottom
-- Compact upcoming-holiday banner and automatic "No school" entries on closure days
+- Automatic "No school" entries on closure days
 - Phone-friendly controls with automatic saving
 - Opens directly without a login for anyone who has the app link
 - Camera/photo attachments for every check-in (up to 8 per section)

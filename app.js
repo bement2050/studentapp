@@ -62,6 +62,7 @@ let dataBackend = "initializing";
 let supabaseClient = null;
 let autoSaveTimer = null;
 let isHydrating = false;
+let isOpeningDate = false;
 let currentPhotoEntryId = null;
 let activeDate = todayISO();
 const previewUrls = new Set();
@@ -189,6 +190,13 @@ function setStatus(message) {
   syncStatus.textContent = message;
 }
 
+function setDateNavigationDisabled(disabled) {
+  previousDayBtn.disabled = disabled;
+  nextDayBtn.disabled = disabled;
+  todayBtn.disabled = disabled || ((entryDateInput.value || todayISO()) === todayISO());
+  entryDateInput.disabled = disabled;
+}
+
 function calendarEventFor(date) {
   return PISD_CALENDAR.find((event) => date >= event.start && date <= event.end);
 }
@@ -209,27 +217,11 @@ function updateCalendarNotice() {
     calendarNoticeTitle.textContent = event.title;
     calendarNoticeText.textContent = event.description;
   } else {
-    const upcoming = PISD_CALENDAR.find((item) =>
-      item.kind === "holiday" && item.end >= todayISO()
-    );
-    if (upcoming) {
-      const start = shortDate(upcoming.start);
-      const end = upcoming.end !== upcoming.start ? `–${shortDate(upcoming.end)}` : "";
-      const daysAway = Math.max(0, Math.ceil(
-        (new Date(`${upcoming.start}T12:00:00`) - new Date(`${todayISO()}T12:00:00`)) / 86_400_000
-      ));
-      calendarNoticeTitle.textContent = `Upcoming: ${upcoming.title}`;
-      calendarNoticeText.textContent = `${start}${end} · ${daysAway === 0 ? "today" : `in ${daysAway} days`}`;
-    } else {
-      calendarNoticeTitle.textContent = "Plano ISD calendar";
-      calendarNoticeText.textContent = "No more closures are listed for this school year.";
-    }
+    calendarNoticeTitle.textContent = "Plano ISD calendar";
+    calendarNoticeText.textContent = "No special district calendar notice for this date.";
   }
 
-  const upcoming = PISD_CALENDAR.find((item) => item.kind !== "school" && item.end >= todayISO());
-  nextClosure.textContent = upcoming
-    ? `Next calendar note: ${upcoming.title} · ${shortDate(upcoming.start)}`
-    : "2026–27 Plano ISD calendar loaded";
+  nextClosure.textContent = "District calendar synced for selected date";
 }
 
 async function resizePhoto(file) {
@@ -697,48 +689,55 @@ function fillHolidayDay(event) {
     const noteField = block.querySelector("textarea");
     noteField.value = index === 0
       ? `${event.title} - ${event.description}`
-      : `No school - ${event.title}.`;
+      : "No school.";
     setNoteEditState(block, false);
   });
   updateFormProgress();
 }
 
 async function openDate(targetDate, { saveCurrent = true } = {}) {
-  if (!targetDate) return;
+  if (!targetDate || isOpeningDate) return;
+  isOpeningDate = true;
+  setDateNavigationDisabled(true);
   window.clearTimeout(autoSaveTimer);
   const previousDate = activeDate;
+  try {
+    if (saveCurrent && previousDate && targetDate !== previousDate && formHasMeaningfulContent()) {
+      entryDateInput.value = previousDate;
+      await persistCurrentForm();
+    }
 
-  if (saveCurrent && previousDate && targetDate !== previousDate && formHasMeaningfulContent()) {
-    entryDateInput.value = previousDate;
-    await persistCurrentForm();
-  }
+    const studentName = childNameInput.value.trim() || DEFAULT_CHILD_NAME;
+    const entryId = keyForEntry(targetDate, studentName);
+    const entries = await fetchEntries();
+    const savedEntry = entries.find((entry) => entry.id === entryId);
 
-  const studentName = childNameInput.value.trim() || DEFAULT_CHILD_NAME;
-  const entryId = keyForEntry(targetDate, studentName);
-  const entries = await fetchEntries();
-  const savedEntry = entries.find((entry) => entry.id === entryId);
+    if (savedEntry) {
+      writeForm(savedEntry);
+      setStatus(`Opened ${formatEntryDate(targetDate)}`);
+      return;
+    }
 
-  if (savedEntry) {
-    writeForm(savedEntry);
-    setStatus(`Opened ${formatEntryDate(targetDate)}`);
-    return;
-  }
+    isHydrating = true;
+    clearForm(true);
+    entryDateInput.value = targetDate;
+    activeDate = targetDate;
+    await loadPhotosForEntry(entryId);
+    const holiday = calendarEventFor(targetDate);
+    if (holiday?.kind === "holiday") fillHolidayDay(holiday);
+    updateCalendarNotice();
+    isHydrating = false;
 
-  isHydrating = true;
-  clearForm(true);
-  entryDateInput.value = targetDate;
-  activeDate = targetDate;
-  await loadPhotosForEntry(entryId);
-  const holiday = calendarEventFor(targetDate);
-  if (holiday?.kind === "holiday") fillHolidayDay(holiday);
-  updateCalendarNotice();
-  isHydrating = false;
-
-  if (holiday?.kind === "holiday") {
-    await persistCurrentForm();
-    setStatus(`${holiday.title} filled automatically - no school`);
-  } else {
-    setStatus(`No saved entry for ${formatEntryDate(targetDate)} - ready to add`);
+    if (holiday?.kind === "holiday") {
+      await persistCurrentForm();
+      setStatus(`${holiday.title} filled automatically - no school`);
+    } else {
+      setStatus(`No saved entry for ${formatEntryDate(targetDate)} - ready to add`);
+    }
+  } finally {
+    isHydrating = false;
+    isOpeningDate = false;
+    setDateNavigationDisabled(false);
   }
 }
 
@@ -1176,6 +1175,17 @@ blocksContainer.addEventListener("click", async (event) => {
 });
 blocksContainer.addEventListener("change", (event) => {
   if (event.target.matches(".photo-input")) addSelectedPhotos(event.target);
+});
+window.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+    event.preventDefault();
+    saveCurrentEntry();
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    persistCurrentForm();
+  }
 });
 window.addEventListener("beforeprint", preparePrintLayout);
 window.addEventListener("afterprint", restoreScreenLayout);
