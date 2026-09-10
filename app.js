@@ -510,7 +510,6 @@ function createBlocks() {
     const textArea = clone.querySelector("textarea");
     blockTitle.textContent = title;
     badge.textContent = String(index + 1).padStart(2, "0");
-    textArea.maxLength = 500;
 
     const moodInputs = clone.querySelectorAll(".mood-row input");
     moodInputs.forEach((input) => {
@@ -635,7 +634,7 @@ function updateFormProgress() {
     if (hasContent) started += 1;
 
     const count = block.querySelector(".character-count");
-    count.textContent = `${note.value.length} / 500`;
+    count.textContent = `${note.value.length} characters`;
   });
 
   completionText.textContent = `${started} of ${blocks.length} check-ins started`;
