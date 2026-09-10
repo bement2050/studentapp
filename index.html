@@ -14,32 +14,25 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=25" />
+    <link rel="stylesheet" href="styles.css?v=26" />
   </head>
   <body>
     <main class="app-shell">
       <header class="hero">
         <div class="brand-mark" aria-hidden="true">☀</div>
         <div class="hero-copy">
-          <p class="kicker">Daily care journal</p>
           <h1>Today's Journal</h1>
-          <p class="hero-subtitle">A simple, calm way to capture the moments that matter.</p>
         </div>
         <label class="hero-date-picker">
           <span>Date</span>
           <input id="entryDate" type="date" required />
         </label>
         <div class="hero-actions">
-          <button id="clearTodayBtn" class="btn btn-clear" type="button">Clear today</button>
           <button id="printBtn" class="btn btn-ghost" type="button">Print</button>
         </div>
       </header>
 
-      <section id="todayEntry" class="panel meta-panel" aria-labelledby="day-details-heading">
-        <div class="section-intro">
-          <p class="eyebrow">01 · The basics</p>
-          <h2 id="day-details-heading">Day details</h2>
-        </div>
+      <section id="todayEntry" class="panel meta-panel" aria-label="Day details">
         <label>
           Student name
           <input id="childName" type="text" value="Sammy" placeholder="e.g. Sammy" maxlength="60" autocomplete="name" enterkeyhint="next" required />
@@ -50,7 +43,7 @@
         </label>
       </section>
 
-      <aside id="calendarNotice" class="calendar-notice" aria-live="polite">
+      <aside id="calendarNotice" class="calendar-notice" aria-live="polite" hidden>
         <div class="calendar-icon" aria-hidden="true">📅</div>
         <div>
           <strong id="calendarNoticeTitle">Plano ISD calendar</strong>
@@ -59,24 +52,10 @@
         <a href="https://www.pisd.edu/about-our-district/calendar" target="_blank" rel="noreferrer">View official calendar ↗</a>
       </aside>
 
-      <div class="status-row">
-        <p id="syncStatus" class="sync-status" role="status" aria-live="polite"></p>
-      </div>
+      <p id="syncStatus" class="sync-status" role="status" aria-live="polite"></p>
 
       <div class="section-heading">
-        <div>
-          <p class="eyebrow">02 · Check in</p>
-          <h2>How did the day go?</h2>
-        </div>
-        <p>Choose what fits and add a few helpful notes.</p>
-      </div>
-
-      <div class="progress-card" aria-live="polite">
-        <div class="progress-copy">
-          <strong id="completionText">0 of 2 check-ins started</strong>
-          <span id="nextClosure"></span>
-        </div>
-        <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+        <h2>Check-ins</h2>
       </div>
 
       <section id="blocksContainer" class="blocks" aria-live="polite"></section>
@@ -112,7 +91,7 @@
         <fieldset class="mood-row">
           <legend class="mood-legend">
             <span>Emotions <small>Choose all that apply</small></span>
-            <button type="button" class="mood-lock-btn" aria-label="Unlock emotions">Unlock</button>
+            <button type="button" class="mood-lock-btn" aria-label="Edit emotions">Edit</button>
           </legend>
           <label><input type="checkbox" value="happy" /> <span>😀 Happy</span></label>
           <label><input type="checkbox" value="sad" /> <span>😢 Sad</span></label>
@@ -172,6 +151,6 @@
       </article>
     </template>
 
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
   </body>
 </html>

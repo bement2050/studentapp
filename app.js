@@ -44,17 +44,12 @@ const syncStatus = document.getElementById("syncStatus");
 const calendarNotice = document.getElementById("calendarNotice");
 const calendarNoticeTitle = document.getElementById("calendarNoticeTitle");
 const calendarNoticeText = document.getElementById("calendarNoticeText");
-const completionText = document.getElementById("completionText");
-const progressBar = document.getElementById("progressBar");
-const nextClosure = document.getElementById("nextClosure");
 const printBtn = document.getElementById("printBtn");
 const paperPrintSheet = document.getElementById("paperPrintSheet");
 const paperStudentName = document.getElementById("paperStudentName");
 const paperEntryDate = document.getElementById("paperEntryDate");
 const paperStaffInitials = document.getElementById("paperStaffInitials");
 const paperRows = document.getElementById("paperRows");
-
-const clearTodayBtn = document.getElementById("clearTodayBtn");
 
 const blockTemplate = document.getElementById("blockTemplate");
 
@@ -201,51 +196,19 @@ function calendarEventFor(date) {
   return PISD_CALENDAR.find((event) => date >= event.start && date <= event.end);
 }
 
-function shortDate(dateString) {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" })
-    .format(new Date(`${dateString}T12:00:00`));
-}
-
-function dateDiffDays(fromDate, toDate) {
-  const from = new Date(`${fromDate}T12:00:00`);
-  const to = new Date(`${toDate}T12:00:00`);
-  return Math.ceil((to - from) / 86_400_000);
-}
-
 function updateCalendarNotice() {
   const selectedDate = entryDateInput.value || todayISO();
   updateDateNavigationState();
   const event = calendarEventFor(selectedDate);
+  calendarNotice.hidden = !event;
   calendarNotice.classList.toggle("is-closure", event?.kind === "holiday");
   calendarNotice.classList.toggle("is-early", event?.kind === "early");
 
   if (event) {
     calendarNoticeTitle.textContent = event.title;
     calendarNoticeText.textContent = event.description;
-  } else {
-    calendarNoticeTitle.textContent = "Plano ISD calendar";
-    calendarNoticeText.textContent = "No special district calendar notice for this date.";
   }
 
-  if (event) {
-    const spanDays = dateDiffDays(event.start, event.end) + 1;
-    const dayNumber = dateDiffDays(event.start, selectedDate) + 1;
-    const spanLabel = spanDays > 1 ? `Day ${dayNumber} of ${spanDays}` : "Happening today";
-    nextClosure.textContent = `Special day: ${event.title} · ${spanLabel}`;
-    return;
-  }
-
-  const upcoming = PISD_CALENDAR.find((item) => item.start >= selectedDate);
-  if (!upcoming) {
-    nextClosure.textContent = "No more district events listed this school year";
-    return;
-  }
-
-  const daysAway = Math.max(0, dateDiffDays(selectedDate, upcoming.start));
-  const start = shortDate(upcoming.start);
-  const end = upcoming.end !== upcoming.start ? `-${shortDate(upcoming.end)}` : "";
-  const when = daysAway === 0 ? "today" : `in ${daysAway} days`;
-  nextClosure.textContent = `Upcoming event: ${upcoming.title} · ${start}${end} · ${when}`;
 }
 
 async function resizePhoto(file) {
@@ -548,8 +511,8 @@ function setMoodLockState(block, isLocked) {
     input.disabled = isLocked;
   });
   block.classList.toggle("is-mood-locked", isLocked);
-  moodButton.textContent = isLocked ? "Unlock" : "Lock";
-  moodButton.setAttribute("aria-label", isLocked ? "Unlock emotions" : "Lock emotions");
+  moodButton.textContent = isLocked ? "Edit" : "Save";
+  moodButton.setAttribute("aria-label", isLocked ? "Edit emotions" : "Save emotions");
 }
 
 async function saveBlockNote(block) {
@@ -696,7 +659,6 @@ function clearForm(keepHeader = false) {
 
 function updateFormProgress() {
   const blocks = [...document.querySelectorAll(".day-block")];
-  let started = 0;
 
   blocks.forEach((block) => {
     const note = block.querySelector("textarea");
@@ -707,14 +669,11 @@ function updateFormProgress() {
       || note.value.trim()
     );
     block.classList.toggle("has-content", hasContent);
-    if (hasContent) started += 1;
 
     const count = block.querySelector(".character-count");
     count.textContent = `${note.value.length} characters`;
   });
 
-  completionText.textContent = `${started} of ${blocks.length} check-ins started`;
-  progressBar.style.width = `${blocks.length ? (started / blocks.length) * 100 : 0}%`;
 }
 
 function formHasMeaningfulContent() {
@@ -825,26 +784,6 @@ function applyRememberedDetails() {
   staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
   entryDateInput.value = todayISO();
   activeDate = entryDateInput.value;
-}
-
-async function clearToday() {
-  const today = todayISO();
-  const studentName = childNameInput.value.trim() || DEFAULT_CHILD_NAME;
-  const entryId = keyForEntry(today, studentName);
-  const ok = confirm(`Clear today's entry for ${studentName}? Check-ins and photos for today will be removed.`);
-  if (!ok) return;
-
-  try {
-    window.clearTimeout(autoSaveTimer);
-    await deleteEntry(entryId);
-    clearForm(false);
-    childNameInput.value = DEFAULT_CHILD_NAME;
-    staffInitialsInput.value = DEFAULT_STAFF_INITIALS;
-    entryDateInput.value = today;
-    setStatus("Today cleared — past days were not changed");
-  } catch (error) {
-    setStatus(`Could not clear today: ${error.message}`);
-  }
 }
 
 async function copyLastDay() {
@@ -1177,7 +1116,6 @@ function restoreScreenLayout() {
   paperPrintSheet.setAttribute("aria-hidden", "true");
 }
 
-clearTodayBtn.addEventListener("click", clearToday);
 printBtn.addEventListener("click", printCurrentDay);
 previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
 nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
@@ -1202,7 +1140,12 @@ blocksContainer.addEventListener("click", async (event) => {
     if (!block) return;
     const isLocked = block.classList.contains("is-mood-locked");
     setMoodLockState(block, !isLocked);
-    setStatus(isLocked ? "Emotions unlocked for editing" : "Emotions locked");
+    if (isLocked) {
+      setStatus("Emotions ready to edit");
+    } else {
+      const saved = await persistCurrentForm({ manual: true });
+      if (saved) setStatus("✓ Emotions saved");
+    }
     return;
   }
 

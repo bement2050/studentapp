@@ -31,9 +31,9 @@ body {
 
 .app-shell {
   width: min(1180px, 92vw);
-  margin: 1.25rem auto 2rem;
+  margin: .75rem auto 1.25rem;
   display: grid;
-  gap: .75rem;
+  gap: .5rem;
 }
 
 .hero {
@@ -42,7 +42,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.2rem;
+  padding: .75rem 1rem;
   border: 1px solid rgba(255,255,255,.7);
   border-radius: var(--radius);
   background: linear-gradient(112deg, #1d4e43 0%, #26705f 100%);
@@ -86,18 +86,6 @@ body {
   font-size: .65rem;
 }
 
-.hero-subtitle {
-  margin: .15rem 0 0;
-  color: rgba(255,255,255,.78);
-}
-
-.kicker {
-  margin: 0;
-  font-size: 0.84rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 h1,
 h2,
 h3 {
@@ -113,7 +101,7 @@ h1 {
 
 .hero-actions {
   display: flex;
-  gap: 0.6rem;
+  gap: .4rem;
   flex-wrap: wrap;
 }
 
@@ -142,29 +130,15 @@ h1 {
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: var(--shadow);
-  padding: .85rem;
+  padding: .7rem;
 }
 
 .meta-panel {
   display: grid;
-  gap: .65rem;
+  gap: .5rem;
   grid-template-columns: repeat(2, minmax(190px, 1fr));
   align-items: end;
   animation: fadeUp 520ms ease both;
-}
-
-.section-intro {
-  grid-column: 1 / -1;
-  padding-bottom: .1rem;
-}
-
-.eyebrow {
-  margin: 0 0 .2rem;
-  color: var(--green);
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: .13em;
-  text-transform: uppercase;
 }
 
 .section-heading {
@@ -172,13 +146,7 @@ h1 {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  margin: 0 .1rem;
-}
-
-.section-heading > p {
-  margin: 0;
-  color: var(--muted);
-  font-size: .92rem;
+  margin: .15rem .1rem 0;
 }
 
 label {
@@ -257,20 +225,6 @@ button:focus-visible {
   color: var(--danger);
 }
 
-.status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 2rem;
-}
-
-.btn-clear {
-  border-color: rgba(255,255,255,.55);
-  background: #fff;
-  color: var(--danger);
-}
-
 .calendar-notice {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -307,6 +261,10 @@ button:focus-visible {
 .calendar-notice p {
   margin: .1rem 0 0;
   font-size: .78rem;
+}
+
+.calendar-notice[hidden] {
+  display: none;
 }
 
 .date-navigator {
@@ -347,43 +305,6 @@ button:focus-visible {
   white-space: nowrap;
 }
 
-.progress-card {
-  display: grid;
-  gap: .55rem;
-  padding: .8rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255,255,255,.62);
-}
-
-.progress-copy {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: .82rem;
-}
-
-.progress-copy span {
-  color: var(--muted);
-}
-
-.progress-track {
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #dce5e0;
-}
-
-.progress-track span {
-  display: block;
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--green), #55a990);
-  transition: width 220ms ease;
-}
-
 .utility-actions {
   display: flex;
   flex-wrap: wrap;
@@ -401,7 +322,7 @@ button:focus-visible {
 
 .blocks {
   display: grid;
-  gap: 1rem;
+  gap: .65rem;
   grid-template-columns: repeat(2, minmax(280px, 1fr));
 }
 
@@ -414,8 +335,8 @@ button:focus-visible {
 
 .day-block {
   display: grid;
-  gap: .8rem;
-  padding: 1rem;
+  gap: .6rem;
+  padding: .8rem;
   animation: fadeUp 530ms ease both;
 }
 
@@ -574,7 +495,7 @@ fieldset label input:checked + span {
 }
 
 .notes-wrap textarea {
-  min-height: 8.5rem;
+  min-height: 6.5rem;
   overflow-y: hidden;
   resize: none;
   line-height: 1.35;
@@ -937,14 +858,9 @@ fieldset label input:checked + span {
     grid-template-columns: 1fr;
   }
 
-  .status-row,
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .section-heading > p {
-    display: none;
   }
 
   .panel {
@@ -955,10 +871,6 @@ fieldset label input:checked + span {
 
   .hero {
     border-radius: 0 0 20px 20px;
-  }
-
-  .hero-subtitle {
-    max-width: 28rem;
   }
 
   .global-clock {
@@ -986,12 +898,6 @@ fieldset label input:checked + span {
 
   .calendar-notice a {
     grid-column: 2;
-  }
-
-  .progress-copy {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: .2rem;
   }
 
   input[type="text"],
@@ -1103,11 +1009,6 @@ fieldset label input:checked + span {
     border-radius: 0 0 14px 14px;
   }
 
-  .kicker,
-  .hero-subtitle {
-    display: none;
-  }
-
   h1 {
     font-size: 1.55rem;
   }
@@ -1131,7 +1032,7 @@ fieldset label input:checked + span {
   .hero-actions {
     display: grid;
     grid-column: 1 / -1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: .4rem;
   }
 
@@ -1145,10 +1046,6 @@ fieldset label input:checked + span {
     grid-template-columns: minmax(0, 2.2fr) minmax(76px, .8fr);
     gap: .45rem;
     padding: .65rem;
-  }
-
-  .meta-panel .section-intro {
-    display: none;
   }
 
   .meta-panel label {
@@ -1180,10 +1077,6 @@ fieldset label input:checked + span {
     line-height: 1.25;
   }
 
-  .status-row {
-    min-height: 1rem;
-  }
-
   .sync-status {
     font-size: .7rem;
   }
@@ -1194,26 +1087,6 @@ fieldset label input:checked + span {
 
   .section-heading h2 {
     font-size: 1.2rem;
-  }
-
-  .section-heading .eyebrow {
-    margin-bottom: 0;
-    font-size: .62rem;
-  }
-
-  .progress-card {
-    gap: .35rem;
-    padding: .45rem .6rem;
-    border-radius: 11px;
-  }
-
-  .progress-copy {
-    gap: .25rem;
-    font-size: .7rem;
-  }
-
-  .progress-track {
-    height: 4px;
   }
 
   .blocks {
@@ -1362,19 +1235,8 @@ fieldset label input:checked + span {
     font-size: 15pt;
   }
 
-  .kicker {
-    color: #111;
-    font-size: 7pt;
-  }
-
-  h1 {
+h1 {
     font-size: 21pt;
-  }
-
-  .hero-subtitle {
-    margin: 0;
-    color: #333;
-    font-size: 8pt;
   }
 
   .global-clock {
@@ -1396,9 +1258,7 @@ fieldset label input:checked + span {
   .app-tabs,
   .date-navigator,
   .calendar-notice,
-  .status-row,
   .section-heading,
-  .progress-card,
   .history-panel,
   .mobile-save-bar,
   .photo-add,
@@ -1419,10 +1279,6 @@ fieldset label input:checked + span {
     grid-template-columns: 1.25fr .85fr .65fr .65fr;
     gap: 7px;
     padding: 7px 10px;
-  }
-
-  .section-intro {
-    display: none;
   }
 
   .meta-panel label {
