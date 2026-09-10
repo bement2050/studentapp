@@ -206,6 +206,12 @@ function shortDate(dateString) {
     .format(new Date(`${dateString}T12:00:00`));
 }
 
+function dateDiffDays(fromDate, toDate) {
+  const from = new Date(`${fromDate}T12:00:00`);
+  const to = new Date(`${toDate}T12:00:00`);
+  return Math.ceil((to - from) / 86_400_000);
+}
+
 function updateCalendarNotice() {
   const selectedDate = entryDateInput.value || todayISO();
   updateDateNavigationState();
@@ -221,7 +227,25 @@ function updateCalendarNotice() {
     calendarNoticeText.textContent = "No special district calendar notice for this date.";
   }
 
-  nextClosure.textContent = "District calendar synced for selected date";
+  if (event) {
+    const spanDays = dateDiffDays(event.start, event.end) + 1;
+    const dayNumber = dateDiffDays(event.start, selectedDate) + 1;
+    const spanLabel = spanDays > 1 ? `Day ${dayNumber} of ${spanDays}` : "Happening today";
+    nextClosure.textContent = `Special day: ${event.title} · ${spanLabel}`;
+    return;
+  }
+
+  const upcoming = PISD_CALENDAR.find((item) => item.start >= selectedDate);
+  if (!upcoming) {
+    nextClosure.textContent = "No more district events listed this school year";
+    return;
+  }
+
+  const daysAway = Math.max(0, dateDiffDays(selectedDate, upcoming.start));
+  const start = shortDate(upcoming.start);
+  const end = upcoming.end !== upcoming.start ? `-${shortDate(upcoming.end)}` : "";
+  const when = daysAway === 0 ? "today" : `in ${daysAway} days`;
+  nextClosure.textContent = `Upcoming event: ${upcoming.title} · ${start}${end} · ${when}`;
 }
 
 async function resizePhoto(file) {
@@ -254,8 +278,7 @@ function updatePhotoCounts() {
   document.querySelectorAll(".day-block").forEach((block) => {
     const total = block.querySelectorAll(".photo-item").length;
     block.querySelector(".photo-section").classList.toggle("has-photos", total > 0);
-    block.querySelector(".photo-count").textContent =
-      `${total} added · saved securely in the cloud`;
+    block.querySelector(".photo-count").textContent = `${total} added`;
   });
 }
 
@@ -433,7 +456,7 @@ async function initBackend() {
   }
 
   dataBackend = "supabase";
-  setStatus("● Connected to shared cloud storage");
+  setStatus("Cloud connected");
   return true;
 }
 
@@ -714,7 +737,7 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
 
     if (savedEntry) {
       writeForm(savedEntry);
-      setStatus(`Opened ${formatEntryDate(targetDate)}`);
+      setStatus("");
       return;
     }
 
@@ -730,9 +753,8 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
 
     if (holiday?.kind === "holiday") {
       await persistCurrentForm();
-      setStatus(`${holiday.title} filled automatically - no school`);
     } else {
-      setStatus(`No saved entry for ${formatEntryDate(targetDate)} - ready to add`);
+      setStatus("");
     }
   } finally {
     isHydrating = false;
@@ -761,7 +783,7 @@ async function persistCurrentForm({ manual = false } = {}) {
     await upsertEntry(entry);
     await movePhotoRecords(currentPhotoEntryId, entry.id);
     currentPhotoEntryId = entry.id;
-    setStatus(`${manual ? "✓ Saved" : "✓ Autosaved"} to shared cloud storage`);
+    setStatus(manual ? "✓ Saved" : "✓ Autosaved");
     return true;
   } catch (error) {
     setStatus("Cloud save failed — keep this page open until the connection returns");
@@ -1106,7 +1128,7 @@ function preparePrintLayout() {
 
     notesPanel.className = "paper-notes-panel";
     notesTitle.className = "paper-notes-title";
-    notesTitle.textContent = "Notes about today:";
+    notesTitle.textContent = "Notes:";
     noteText.className = "paper-note-text";
     noteText.textContent = block.notes || "";
     supports.className = "paper-supports";
