@@ -196,18 +196,48 @@ function calendarEventFor(date) {
   return PISD_CALENDAR.find((event) => date >= event.start && date <= event.end);
 }
 
-function updateCalendarNotice() {
-  const selectedDate = entryDateInput.value || todayISO();
-  updateDateNavigationState();
-  const event = calendarEventFor(selectedDate);
-  calendarNotice.hidden = !event;
-  calendarNotice.classList.toggle("is-closure", event?.kind === "holiday");
-  calendarNotice.classList.toggle("is-early", event?.kind === "early");
+function calendarDaysBetween(fromDate, toDate) {
+  const [fromYear, fromMonth, fromDay] = fromDate.split("-").map(Number);
+  const [toYear, toMonth, toDay] = toDate.split("-").map(Number);
+  const from = Date.UTC(fromYear, fromMonth - 1, fromDay);
+  const to = Date.UTC(toYear, toMonth - 1, toDay);
+  return Math.max(0, Math.round((to - from) / 86_400_000));
+}
 
-  if (event) {
-    calendarNoticeTitle.textContent = event.title;
-    calendarNoticeText.textContent = event.description;
-  }
+function compactCalendarDate(date) {
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" })
+    .format(new Date(`${date}T12:00:00`));
+}
+
+function holidayDateRange(event) {
+  const start = compactCalendarDate(event.start);
+  return event.end === event.start ? start : `${start}–${compactCalendarDate(event.end)}`;
+}
+
+function isMajorHoliday(event) {
+  return event.kind === "holiday"
+    && (event.title.toLowerCase().includes("break") || event.title === "Student & teacher holiday");
+}
+
+function updateCalendarNotice() {
+  updateDateNavigationState();
+  const today = todayISO();
+  const holidays = PISD_CALENDAR
+    .filter((event) => isMajorHoliday(event) && event.end >= today)
+    .slice(0, 2);
+
+  calendarNotice.hidden = holidays.length === 0;
+  if (!holidays.length) return;
+
+  calendarNotice.classList.add("is-closure");
+  calendarNotice.classList.remove("is-early");
+  calendarNoticeTitle.textContent = "Plano ISD · student & staff holidays";
+  calendarNoticeText.textContent = holidays.map((event) => {
+    const isHappening = today >= event.start && today <= event.end;
+    const days = calendarDaysBetween(today, event.start);
+    const countdown = isHappening ? "today" : `${days} ${days === 1 ? "day" : "days"}`;
+    return `${event.title}: ${countdown} (${holidayDateRange(event)})`;
+  }).join("  •  ");
 
 }
 
