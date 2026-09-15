@@ -99,3 +99,97 @@ create policy "Link users can update journal photos"
 create policy "Link users can delete journal photos"
   on storage.objects for delete to anon
   using (bucket_id = 'journal-photos');
+
+-- Daily app opening/closing totals. The table itself is not readable by anon;
+-- the app uses the restricted reporting function below for privileged viewers.
+create table if not exists public.journal_access_stats (
+  project_id text not null,
+  date date not null,
+  username text not null,
+  opens integer not null default 0 check (opens >= 0),
+  closes integer not null default 0 check (closes >= 0),
+  last_opened_at timestamptz,
+  last_closed_at timestamptz,
+  primary key (project_id, date, username)
+);
+
+alter table public.journal_access_stats enable row level security;
+revoke all on public.journal_access_stats from anon, authenticated;
+
+create table if not exists public.journal_stats_viewers (
+  username text primary key,
+  role text not null check (role in ('admin', 'superuser'))
+);
+
+alter table public.journal_stats_viewers enable row level security;
+revoke all on public.journal_stats_viewers from anon, authenticated;
+insert into public.journal_stats_viewers (username, role)
+values ('BAlemayehu', 'superuser')
+on conflict (username) do update set role = excluded.role;
+
+create or replace function public.record_journal_access(
+  p_project_id text,
+  p_username text,
+  p_event text,
+  p_occurred_at timestamptz,
+  p_local_date date
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_project_id <> 'sam-about-my-day'
+     or p_event not in ('open', 'close')
+     or lower(p_username) not in (
+       'jkarim', 'amamo', 'balemayehu', 'sgebreyes', 'gchere', 'talemayehu', 'aalemayehu'
+     ) then
+    raise exception 'Invalid access event';
+  end if;
+
+  insert into public.journal_access_stats (
+    project_id, date, username, opens, closes, last_opened_at, last_closed_at
+  ) values (
+    p_project_id,
+    p_local_date,
+    p_username,
+    case when p_event = 'open' then 1 else 0 end,
+    case when p_event = 'close' then 1 else 0 end,
+    case when p_event = 'open' then p_occurred_at else null end,
+    case when p_event = 'close' then p_occurred_at else null end
+  )
+  on conflict (project_id, date, username) do update set
+    opens = journal_access_stats.opens + case when p_event = 'open' then 1 else 0 end,
+    closes = journal_access_stats.closes + case when p_event = 'close' then 1 else 0 end,
+    last_opened_at = case when p_event = 'open' then p_occurred_at else journal_access_stats.last_opened_at end,
+    last_closed_at = case when p_event = 'close' then p_occurred_at else journal_access_stats.last_closed_at end;
+end;
+$$;
+
+create or replace function public.get_journal_access_stats(
+  p_project_id text,
+  p_requesting_username text,
+  p_since date
+)
+returns table (date date, username text, opens integer, closes integer)
+language sql
+security definer
+set search_path = public
+as $$
+  select stats.date, stats.username, stats.opens, stats.closes
+  from public.journal_access_stats stats
+  where stats.project_id = p_project_id
+    and stats.date >= p_since
+    and exists (
+      select 1 from public.journal_stats_viewers viewer
+      where lower(viewer.username) = lower(p_requesting_username)
+        and viewer.role in ('admin', 'superuser')
+    )
+  order by stats.date desc, stats.username;
+$$;
+
+revoke all on function public.record_journal_access(text, text, text, timestamptz, date) from public;
+revoke all on function public.get_journal_access_stats(text, text, date) from public;
+grant execute on function public.record_journal_access(text, text, text, timestamptz, date) to anon;
+grant execute on function public.get_journal_access_stats(text, text, date) to anon;

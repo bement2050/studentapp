@@ -29,6 +29,125 @@ body {
     var(--bg);
 }
 
+body.is-authenticating .app-shell,
+body.is-authenticating .paper-print-sheet {
+  display: none;
+}
+
+.login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(237, 117, 75, .2), transparent 30rem),
+    linear-gradient(145deg, #edf4ef, #f8f1e9);
+}
+
+.login-screen[hidden] {
+  display: none;
+}
+
+.login-card {
+  width: min(410px, 100%);
+  display: grid;
+  gap: .9rem;
+  padding: clamp(1.4rem, 5vw, 2.2rem);
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 26px;
+  background: var(--panel);
+  box-shadow: 0 24px 70px rgba(29, 78, 67, .18);
+}
+
+.login-card h1,
+.login-card p {
+  margin: 0;
+  text-align: center;
+}
+
+.login-card > p:not(.form-error) { color: var(--muted); }
+.login-mark { font-size: 2.6rem; text-align: center; }
+.login-submit { width: 100%; justify-content: center; }
+
+.password-field {
+  position: relative;
+  display: block;
+}
+
+input[type="password"],
+select {
+  width: 100%;
+  min-height: 44px;
+  padding: .65rem .75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.password-field input { padding-right: 4.2rem; }
+.password-toggle {
+  position: absolute;
+  right: .35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: .3rem .5rem;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.remember-login {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-size: .9rem;
+}
+
+.remember-login input { width: 1.1rem; height: 1.1rem; }
+.form-error { min-height: 1.3em; color: var(--danger); font-weight: 700; }
+.form-message { min-height: 1.3em; margin: 0; color: var(--green); font-weight: 700; }
+
+.account-dialog {
+  width: min(720px, calc(100vw - 2rem));
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  color: var(--ink);
+  box-shadow: 0 24px 80px rgba(18, 43, 37, .3);
+}
+
+.account-dialog::backdrop { background: rgba(15, 35, 31, .62); }
+.account-dialog form { display: grid; gap: 1rem; padding: 1.4rem; }
+.account-dialog [hidden] { display: none !important; }
+.account-dialog small { color: var(--muted); }
+.account-heading { display: flex; justify-content: space-between; gap: 1rem; }
+.account-heading p { margin: .15rem 0 0; color: var(--muted); }
+.dialog-close { border: 0; background: transparent; color: var(--muted); font-size: 1.8rem; cursor: pointer; }
+.account-actions { display: flex; justify-content: space-between; gap: .75rem; }
+.btn-secondary { background: #eef1ef; color: var(--ink); }
+
+.access-stats {
+  display: grid;
+  gap: .65rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.stats-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.stats-heading h3 { font-size: 1.15rem; }
+.stats-table-wrap { max-height: 270px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
+.access-stats table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.access-stats th,
+.access-stats td { padding: .55rem .65rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.access-stats th { position: sticky; top: 0; background: #eef5f1; color: var(--green); }
+.access-stats tbody tr:last-child td { border-bottom: 0; }
+.stats-status { min-height: 1.2em; margin: 0; color: var(--muted); font-size: .8rem; }
+
 .emotion-symbols {
   position: absolute;
   width: 0;

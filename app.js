@@ -6,6 +6,24 @@ const BLOCK_TITLES = [
   "Afternoon"
 ];
 
+const APP_USERS = [
+  { username: "JKarim", initialPassword: "Karim2026", role: "user", credentialVersion: 1 },
+  { username: "Amamo", initialPassword: "Mamo2026", role: "user", credentialVersion: 1 },
+  { username: "BAlemayehu", initialPassword: "B9!vQ2#L7@pX", role: "superuser", credentialVersion: 2 },
+  { username: "SGebreyes", initialPassword: "Sunrise!482", role: "user", credentialVersion: 1 },
+  { username: "GChere", initialPassword: "Cobalt#731", role: "user", credentialVersion: 1 },
+  { username: "TAlemayehu", initialPassword: "Maple$864", role: "user", credentialVersion: 1 },
+  { username: "AAlemayehu", initialPassword: "River@295", role: "user", credentialVersion: 1 }
+];
+const AUTH_STORAGE_KEY = "todays-journal-auth-session";
+const PASSWORD_STORAGE_KEY = "todays-journal-passwords";
+const USERNAME_STORAGE_KEY = "todays-journal-last-username";
+const ACCESS_STATS_KEY = "todays-journal-access-stats";
+const PENDING_ACCESS_KEY = "todays-journal-pending-access";
+let currentUser = null;
+let appStarted = false;
+let accessSessionOpen = false;
+
 // Adopted Plano ISD 2026-27 academic calendar (updated April 20, 2026).
 const PISD_CALENDAR = [
   { start: "2026-08-11", end: "2026-08-11", title: "First day of school", description: "First day of classes for Plano ISD students.", kind: "school" },
@@ -50,6 +68,27 @@ const paperStudentName = document.getElementById("paperStudentName");
 const paperEntryDate = document.getElementById("paperEntryDate");
 const paperStaffInitials = document.getElementById("paperStaffInitials");
 const paperRows = document.getElementById("paperRows");
+const loginScreen = document.getElementById("loginScreen");
+const loginForm = document.getElementById("loginForm");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const rememberLogin = document.getElementById("rememberLogin");
+const loginError = document.getElementById("loginError");
+const accountBtn = document.getElementById("accountBtn");
+const accountDialog = document.getElementById("accountDialog");
+const closeAccountBtn = document.getElementById("closeAccountBtn");
+const signedInSummary = document.getElementById("signedInSummary");
+const passwordForm = document.getElementById("passwordForm");
+const passwordUserWrap = document.getElementById("passwordUserWrap");
+const passwordUser = document.getElementById("passwordUser");
+const newPassword = document.getElementById("newPassword");
+const confirmPassword = document.getElementById("confirmPassword");
+const passwordMessage = document.getElementById("passwordMessage");
+const signOutBtn = document.getElementById("signOutBtn");
+const accessStats = document.getElementById("accessStats");
+const accessStatsBody = document.getElementById("accessStatsBody");
+const refreshStatsBtn = document.getElementById("refreshStatsBtn");
+const statsStatus = document.getElementById("statsStatus");
 
 const blockTemplate = document.getElementById("blockTemplate");
 
@@ -61,6 +100,262 @@ let isOpeningDate = false;
 let currentPhotoEntryId = null;
 let activeDate = todayISO();
 const previewUrls = new Set();
+
+function findUser(username) {
+  const normalized = String(username || "").trim().toLowerCase();
+  return APP_USERS.find((user) => user.username.toLowerCase() === normalized) || null;
+}
+
+function canViewStats(user) {
+  return Boolean(user && ["admin", "superuser"].includes(user.role));
+}
+
+function readPasswordOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(PASSWORD_STORAGE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+}
+
+async function passwordHash(password, salt) {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 120000 },
+    material,
+    256
+  );
+  return bytesToBase64(new Uint8Array(bits));
+}
+
+async function passwordMatches(user, password) {
+  const override = readPasswordOverrides()[user.username];
+  const overrideIsCurrent = override && (
+    override.credentialVersion === user.credentialVersion
+    || (user.credentialVersion === 1 && override.credentialVersion == null)
+  );
+  if (!overrideIsCurrent) {
+    return password === user.initialPassword;
+  }
+  return (await passwordHash(password, base64ToBytes(override.salt))) === override.hash;
+}
+
+async function storeChangedPassword(username, password) {
+  const overrides = readPasswordOverrides();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  overrides[username] = {
+    salt: bytesToBase64(salt),
+    hash: await passwordHash(password, salt),
+    credentialVersion: findUser(username).credentialVersion
+  };
+  localStorage.setItem(PASSWORD_STORAGE_KEY, JSON.stringify(overrides));
+}
+
+function readLocalAccessStats() {
+  try {
+    return JSON.parse(localStorage.getItem(ACCESS_STATS_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function addLocalAccessEvent(event) {
+  const rows = readLocalAccessStats();
+  let row = rows.find((item) => item.date === event.date && item.username === event.username);
+  if (!row) {
+    row = { date: event.date, username: event.username, opens: 0, closes: 0 };
+    rows.push(row);
+  }
+  if (event.type === "open") row.opens += 1;
+  if (event.type === "close") row.closes += 1;
+  localStorage.setItem(ACCESS_STATS_KEY, JSON.stringify(rows.slice(-500)));
+}
+
+function queueAccessEvent(event) {
+  let pending = [];
+  try { pending = JSON.parse(localStorage.getItem(PENDING_ACCESS_KEY)) || []; } catch {}
+  pending.push(event);
+  localStorage.setItem(PENDING_ACCESS_KEY, JSON.stringify(pending));
+}
+
+async function flushAccessEvents() {
+  if (dataBackend !== "supabase") return false;
+  let pending = [];
+  try { pending = JSON.parse(localStorage.getItem(PENDING_ACCESS_KEY)) || []; } catch {}
+  if (!pending.length) return true;
+
+  while (pending.length) {
+    const event = pending[0];
+    const { error } = await supabaseClient.rpc("record_journal_access", {
+      p_project_id: APP_CONFIG.projectId,
+      p_username: event.username,
+      p_event: event.type,
+      p_occurred_at: event.occurredAt,
+      p_local_date: event.date
+    });
+    if (error) return false;
+    pending.shift();
+    localStorage.setItem(PENDING_ACCESS_KEY, JSON.stringify(pending));
+  }
+  return true;
+}
+
+function recordAccessEvent(type) {
+  if (!currentUser || !["open", "close"].includes(type)) return;
+  const occurredAt = new Date().toISOString();
+  const event = { username: currentUser.username, type, occurredAt, date: todayISO() };
+  addLocalAccessEvent(event);
+  queueAccessEvent(event);
+  if (dataBackend === "supabase") flushAccessEvents().catch(() => {});
+}
+
+function renderStatsRows(rows) {
+  accessStatsBody.innerHTML = "";
+  const recent = [...rows]
+    .sort((a, b) => b.date.localeCompare(a.date) || a.username.localeCompare(b.username))
+    .slice(0, 210);
+  if (!recent.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.textContent = "No activity recorded yet.";
+    tr.appendChild(td);
+    accessStatsBody.appendChild(tr);
+    return;
+  }
+  recent.forEach((row) => {
+    const tr = document.createElement("tr");
+    [row.date, row.username, row.opens, row.closes].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      tr.appendChild(td);
+    });
+    accessStatsBody.appendChild(tr);
+  });
+}
+
+async function renderAccessStats() {
+  renderStatsRows(readLocalAccessStats());
+  statsStatus.textContent = "Loading shared stats…";
+  if (dataBackend !== "supabase") {
+    statsStatus.textContent = "Showing activity saved on this device.";
+    return;
+  }
+  await flushAccessEvents();
+  const since = dateOffset(todayISO(), -29);
+  const { data, error } = await supabaseClient.rpc("get_journal_access_stats", {
+    p_project_id: APP_CONFIG.projectId,
+    p_requesting_username: currentUser.username,
+    p_since: since
+  });
+  if (error) {
+    statsStatus.textContent = "Showing this device only. Run the updated Supabase SQL for shared stats.";
+    return;
+  }
+  renderStatsRows(data || []);
+  statsStatus.textContent = "Shared activity across devices.";
+}
+
+function openAccountSettings() {
+  if (!currentUser) return;
+  signedInSummary.textContent = currentUser.role === "superuser"
+    ? `Signed in as ${currentUser.username} · Superuser`
+    : `Signed in as ${currentUser.username}`;
+  passwordUserWrap.hidden = currentUser.role !== "superuser";
+  accessStats.hidden = !canViewStats(currentUser);
+  passwordUser.innerHTML = "";
+  APP_USERS.forEach((user) => {
+    const option = document.createElement("option");
+    option.value = user.username;
+    option.textContent = `${user.username}${user.role === "superuser" ? " (superuser)" : ""}`;
+    option.selected = user.username === currentUser.username;
+    passwordUser.appendChild(option);
+  });
+  passwordMessage.textContent = "";
+  passwordForm.reset();
+  accountDialog.showModal();
+  if (canViewStats(currentUser)) renderAccessStats();
+}
+
+function showJournal(user) {
+  currentUser = user;
+  document.body.classList.remove("is-authenticating");
+  loginScreen.hidden = true;
+  accountBtn.textContent = user.role === "superuser" ? `${user.username} · Superuser` : user.username;
+  if (!accessSessionOpen) {
+    accessSessionOpen = true;
+    recordAccessEvent("open");
+  }
+  if (!appStarted) {
+    appStarted = true;
+    startApp();
+  }
+}
+
+function showLogin() {
+  currentUser = null;
+  loginScreen.hidden = false;
+  document.body.classList.add("is-authenticating");
+  loginForm.reset();
+  rememberLogin.checked = true;
+  loginUsername.value = localStorage.getItem(USERNAME_STORAGE_KEY) || "";
+  loginError.textContent = "";
+  window.setTimeout(() => (loginUsername.value ? loginPassword : loginUsername).focus(), 0);
+}
+
+async function signIn(event) {
+  event.preventDefault();
+  loginError.textContent = "";
+  const user = findUser(loginUsername.value);
+  if (!user || !(await passwordMatches(user, loginPassword.value))) {
+    loginError.textContent = "Incorrect username or password.";
+    loginPassword.select();
+    return;
+  }
+
+  localStorage.setItem(USERNAME_STORAGE_KEY, user.username);
+  if (rememberLogin.checked) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ username: user.username, credentialVersion: user.credentialVersion }));
+  } else {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ username: user.username, credentialVersion: user.credentialVersion }));
+  }
+  loginPassword.value = "";
+  showJournal(user);
+}
+
+function restoreSignedInUser() {
+  const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
+  if (!raw) return false;
+  try {
+    const saved = JSON.parse(raw);
+    const user = findUser(saved.username);
+    if (!user || saved.credentialVersion !== user.credentialVersion) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      return false;
+    }
+    showJournal(user);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function todayISO() {
   const now = new Date();
@@ -450,6 +745,7 @@ async function initBackend() {
 
   dataBackend = "supabase";
   setStatus("Cloud connected");
+  flushAccessEvents().catch(() => {});
   return true;
 }
 
@@ -1157,6 +1453,49 @@ function restoreScreenLayout() {
 }
 
 printBtn.addEventListener("click", printCurrentDay);
+loginForm.addEventListener("submit", signIn);
+accountBtn.addEventListener("click", openAccountSettings);
+closeAccountBtn.addEventListener("click", () => accountDialog.close());
+signOutBtn.addEventListener("click", async () => {
+  if (accessSessionOpen) {
+    recordAccessEvent("close");
+    accessSessionOpen = false;
+  }
+  await persistCurrentForm();
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  accountDialog.close();
+  showLogin();
+});
+refreshStatsBtn.addEventListener("click", renderAccessStats);
+passwordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  passwordMessage.textContent = "";
+  if (newPassword.value.length < 6) {
+    passwordMessage.textContent = "Use at least 6 characters.";
+    newPassword.focus();
+    return;
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    passwordMessage.textContent = "The passwords do not match.";
+    confirmPassword.select();
+    return;
+  }
+  const targetUsername = currentUser.role === "superuser" ? passwordUser.value : currentUser.username;
+  await storeChangedPassword(targetUsername, newPassword.value);
+  newPassword.value = "";
+  confirmPassword.value = "";
+  passwordMessage.textContent = `Password changed for ${targetUsername}.`;
+});
+document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const input = document.getElementById(button.dataset.passwordToggle);
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    button.textContent = showing ? "Show" : "Hide";
+    button.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  });
+});
 previousDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, -1)));
 nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
@@ -1223,6 +1562,11 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("beforeprint", preparePrintLayout);
 window.addEventListener("afterprint", restoreScreenLayout);
+window.addEventListener("pagehide", () => {
+  if (!accessSessionOpen) return;
+  recordAccessEvent("close");
+  accessSessionOpen = false;
+});
 async function startApp() {
   createBlocks();
   applyRememberedDetails();
@@ -1243,4 +1587,4 @@ async function startApp() {
   }
 }
 
-startApp();
+if (!restoreSignedInUser()) showLogin();

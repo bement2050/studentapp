@@ -14,7 +14,9 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Compact date picker at the top and unlimited previous/next/today navigation at the bottom
 - Automatic "No school" entries on closure days
 - Phone-friendly controls with automatic saving
-- Opens directly without a login for anyone who has the app link
+- Password-protected sign-in for the three configured staff accounts
+- Keeps users signed in on their device by default
+- Lets every user change their password; the superuser can change any account password
 - Camera/photo attachments for every check-in (up to 8 per section)
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
 - Small Print action at the top on phone and desktop
@@ -51,7 +53,29 @@ Then visit `http://localhost:4173`.
 - Entries and photos are stored in Supabase, not in browser storage or the GitHub repository.
 - Photos are resized before secure upload. JSON export includes the photos as embedded data so the backup is complete.
 - The app requires an internet connection to read or save journal data.
-- Anyone with the link can view, add, edit, or delete journal data, so share the link carefully.
+- The sign-in screen protects normal access to the app. Password changes are stored as
+  salted hashes in that browser, so a changed password applies to that browser/device.
+- Supabase currently uses link-based public database policies. The browser login is an
+  access gate, not server-enforced security; do not use it for sensitive records without
+  migrating the Supabase policies to authenticated users.
+
+## Staff Accounts
+
+- `JKarim` / `Karim2026`
+- `Amamo` / `Mamo2026`
+- `BAlemayehu` / `B9!vQ2#L7@pX` (superuser)
+- `SGebreyes` / `Sunrise!482`
+- `GChere` / `Cobalt#731`
+- `TAlemayehu` / `Maple$864`
+- `AAlemayehu` / `River@295`
+
+Open **Account** after signing in to change a password. `BAlemayehu` can select and
+change any configured user's password. The daily opening/closing report is only shown
+after an admin or superuser signs in; currently `BAlemayehu` is the only privileged viewer.
+
+Run the latest `supabase-public-access.sql` in Supabase SQL Editor to enable shared
+opening/closing totals across devices. Until then, the report uses activity from the
+current browser only.
 
 ## Supabase Central Storage Setup
 
