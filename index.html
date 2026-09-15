@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=31" />
+    <link rel="stylesheet" href="styles.css?v=32" />
   </head>
   <body class="is-authenticating">
     <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -265,15 +265,24 @@
         <section id="accessStats" class="access-stats" hidden>
           <div class="stats-heading">
             <div>
-              <h3>Daily opening and closing</h3>
-              <small>App activity by user for the last 30 days</small>
+              <h3>Detailed usage report</h3>
+              <small>Views, active time, sessions, and device details for the last 30 days</small>
             </div>
             <button id="refreshStatsBtn" class="btn btn-secondary" type="button">Refresh</button>
           </div>
+          <div id="statsSummary" class="stats-summary"></div>
+          <h4>Daily totals</h4>
           <div class="stats-table-wrap">
             <table>
-              <thead><tr><th>Date</th><th>User</th><th>Opened</th><th>Closed</th></tr></thead>
+              <thead><tr><th>Date</th><th>User</th><th>Opened</th><th>Closed</th><th>Views</th><th>Time spent</th></tr></thead>
               <tbody id="accessStatsBody"></tbody>
+            </table>
+          </div>
+          <h4>Activity details</h4>
+          <div class="stats-table-wrap stats-detail-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>User</th><th>Activity</th><th>Journal date viewed</th><th>Duration</th><th>Device</th><th>Browser</th><th>Platform</th><th>Timezone</th><th>Session</th></tr></thead>
+              <tbody id="accessDetailsBody"></tbody>
             </table>
           </div>
           <p id="statsStatus" class="stats-status" aria-live="polite"></p>
@@ -281,6 +290,6 @@
       </form>
     </dialog>
 
-    <script src="app.js?v=31"></script>
+    <script src="app.js?v=32"></script>
   </body>
 </html>

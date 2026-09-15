@@ -19,10 +19,12 @@ const AUTH_STORAGE_KEY = "todays-journal-auth-session";
 const PASSWORD_STORAGE_KEY = "todays-journal-passwords";
 const USERNAME_STORAGE_KEY = "todays-journal-last-username";
 const ACCESS_STATS_KEY = "todays-journal-access-stats";
+const ACCESS_EVENTS_KEY = "todays-journal-access-events";
 const PENDING_ACCESS_KEY = "todays-journal-pending-access";
 let currentUser = null;
 let appStarted = false;
 let accessSessionOpen = false;
+let currentAccessSessionId = null;
 
 // Adopted Plano ISD 2026-27 academic calendar (updated April 20, 2026).
 const PISD_CALENDAR = [
@@ -87,6 +89,8 @@ const passwordMessage = document.getElementById("passwordMessage");
 const signOutBtn = document.getElementById("signOutBtn");
 const accessStats = document.getElementById("accessStats");
 const accessStatsBody = document.getElementById("accessStatsBody");
+const accessDetailsBody = document.getElementById("accessDetailsBody");
+const statsSummary = document.getElementById("statsSummary");
 const refreshStatsBtn = document.getElementById("refreshStatsBtn");
 const statsStatus = document.getElementById("statsStatus");
 
@@ -185,6 +189,19 @@ function addLocalAccessEvent(event) {
   if (event.type === "open") row.opens += 1;
   if (event.type === "close") row.closes += 1;
   localStorage.setItem(ACCESS_STATS_KEY, JSON.stringify(rows.slice(-500)));
+
+  let events = [];
+  try { events = JSON.parse(localStorage.getItem(ACCESS_EVENTS_KEY)) || []; } catch {}
+  events.push(event);
+  localStorage.setItem(ACCESS_EVENTS_KEY, JSON.stringify(events.slice(-2000)));
+}
+
+function readLocalAccessEvents() {
+  try {
+    return JSON.parse(localStorage.getItem(ACCESS_EVENTS_KEY)) || [];
+  } catch {
+    return [];
+  }
 }
 
 function queueAccessEvent(event) {
@@ -202,12 +219,19 @@ async function flushAccessEvents() {
 
   while (pending.length) {
     const event = pending[0];
-    const { error } = await supabaseClient.rpc("record_journal_access", {
+    const { error } = await supabaseClient.rpc("record_journal_access_detail", {
+      p_event_id: event.id,
+      p_session_id: event.sessionId,
       p_project_id: APP_CONFIG.projectId,
       p_username: event.username,
       p_event: event.type,
       p_occurred_at: event.occurredAt,
-      p_local_date: event.date
+      p_local_date: event.date,
+      p_viewed_date: event.viewedDate || null,
+      p_timezone: event.timezone,
+      p_device_type: event.deviceType,
+      p_browser: event.browser,
+      p_platform: event.platform
     });
     if (error) return false;
     pending.shift();
@@ -216,24 +240,119 @@ async function flushAccessEvents() {
   return true;
 }
 
-function recordAccessEvent(type) {
-  if (!currentUser || !["open", "close"].includes(type)) return;
+function browserName() {
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua)) return "Edge";
+  if (/OPR\//.test(ua)) return "Opera";
+  if (/Chrome\//.test(ua)) return "Chrome";
+  if (/Firefox\//.test(ua)) return "Firefox";
+  if (/Safari\//.test(ua)) return "Safari";
+  return "Other";
+}
+
+function deviceType() {
+  const ua = navigator.userAgent;
+  if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return "Tablet";
+  if (/Mobi|Android|iPhone/i.test(ua)) return "Mobile";
+  return "Desktop";
+}
+
+function recordAccessEvent(type, details = {}) {
+  if (!currentUser || !["open", "close", "view"].includes(type)) return;
   const occurredAt = new Date().toISOString();
-  const event = { username: currentUser.username, type, occurredAt, date: todayISO() };
+  let durationSeconds = null;
+  if (type === "close") {
+    const opened = [...readLocalAccessEvents()].reverse().find((item) =>
+      item.sessionId === currentAccessSessionId && item.type === "open"
+    );
+    if (opened) durationSeconds = Math.max(0, Math.round((Date.now() - new Date(opened.occurredAt).getTime()) / 1000));
+  }
+  const event = {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+    sessionId: currentAccessSessionId,
+    username: currentUser.username,
+    type,
+    occurredAt,
+    date: todayISO(),
+    viewedDate: details.viewedDate || null,
+    durationSeconds,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown",
+    deviceType: deviceType(),
+    browser: browserName(),
+    platform: navigator.userAgentData?.platform || navigator.platform || "Unknown"
+  };
   addLocalAccessEvent(event);
   queueAccessEvent(event);
   if (dataBackend === "supabase") flushAccessEvents().catch(() => {});
 }
 
-function renderStatsRows(rows) {
+function startAccessSession() {
+  if (!currentUser || accessSessionOpen) return;
+  currentAccessSessionId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  accessSessionOpen = true;
+  recordAccessEvent("open");
+}
+
+function endAccessSession() {
+  if (!currentUser || !accessSessionOpen) return;
+  recordAccessEvent("close");
+  accessSessionOpen = false;
+  currentAccessSessionId = null;
+}
+
+function formatDuration(seconds) {
+  if (seconds == null) return "—";
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remaining = total % 60;
+  if (hours) return `${hours}h ${minutes}m ${remaining}s`;
+  if (minutes) return `${minutes}m ${remaining}s`;
+  return `${remaining}s`;
+}
+
+function normalizedEvent(row) {
+  return {
+    id: row.id,
+    sessionId: row.session_id || row.sessionId,
+    username: row.username,
+    type: row.event_type || row.type,
+    occurredAt: row.event_at || row.occurredAt,
+    date: row.local_date || row.date,
+    viewedDate: row.viewed_date || row.viewedDate,
+    durationSeconds: row.duration_seconds ?? row.durationSeconds,
+    timezone: row.timezone,
+    deviceType: row.device_type || row.deviceType,
+    browser: row.browser,
+    platform: row.platform
+  };
+}
+
+function summarizeEvents(events) {
+  const rows = new Map();
+  events.forEach((event) => {
+    const key = `${event.date}::${event.username}`;
+    if (!rows.has(key)) rows.set(key, { date: event.date, username: event.username, opens: 0, closes: 0, views: 0, duration: 0 });
+    const row = rows.get(key);
+    if (event.type === "open") row.opens += 1;
+    if (event.type === "close") {
+      row.closes += 1;
+      row.duration += Number(event.durationSeconds) || 0;
+    }
+    if (event.type === "view") row.views += 1;
+  });
+  return [...rows.values()];
+}
+
+function renderStatsRows(events) {
   accessStatsBody.innerHTML = "";
-  const recent = [...rows]
+  const recent = summarizeEvents(events)
     .sort((a, b) => b.date.localeCompare(a.date) || a.username.localeCompare(b.username))
     .slice(0, 210);
   if (!recent.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 4;
+    td.colSpan = 6;
     td.textContent = "No activity recorded yet.";
     tr.appendChild(td);
     accessStatsBody.appendChild(tr);
@@ -241,7 +360,7 @@ function renderStatsRows(rows) {
   }
   recent.forEach((row) => {
     const tr = document.createElement("tr");
-    [row.date, row.username, row.opens, row.closes].forEach((value) => {
+    [row.date, row.username, row.opens, row.closes, row.views, formatDuration(row.duration)].forEach((value) => {
       const td = document.createElement("td");
       td.textContent = String(value);
       tr.appendChild(td);
@@ -250,8 +369,61 @@ function renderStatsRows(rows) {
   });
 }
 
+function renderEventDetails(events) {
+  accessDetailsBody.innerHTML = "";
+  const recent = [...events].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 1000);
+  recent.forEach((event) => {
+    const tr = document.createElement("tr");
+    const when = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(event.occurredAt));
+    const label = ({ open: "Opened app", close: "Closed app", view: "Viewed journal" })[event.type] || event.type;
+    const values = [
+      when, event.username, label, event.viewedDate || "—",
+      event.type === "close" ? formatDuration(event.durationSeconds) : "—",
+      event.deviceType || "Unknown", event.browser || "Unknown", event.platform || "Unknown",
+      event.timezone || "Unknown", (event.sessionId || "—").slice(0, 8)
+    ];
+    values.forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      tr.appendChild(td);
+    });
+    accessDetailsBody.appendChild(tr);
+  });
+}
+
+function renderStatsSummary(events) {
+  const opens = events.filter((event) => event.type === "open").length;
+  const closes = events.filter((event) => event.type === "close").length;
+  const views = events.filter((event) => event.type === "view").length;
+  const users = new Set(events.map((event) => event.username)).size;
+  const openedSessions = new Set(events.filter((event) => event.type === "open").map((event) => event.sessionId));
+  events.filter((event) => event.type === "close").forEach((event) => openedSessions.delete(event.sessionId));
+  const duration = events.reduce((total, event) => total + (event.type === "close" ? Number(event.durationSeconds) || 0 : 0), 0);
+  statsSummary.innerHTML = "";
+  [
+    [opens, "Sessions opened"], [closes, "Sessions closed"], [openedSessions.size, "Active/incomplete"],
+    [views, "Journal views"], [users, "Users active"], [formatDuration(duration), "Total active time"]
+  ].forEach(([value, label]) => {
+    const card = document.createElement("div");
+    const strong = document.createElement("strong");
+    const span = document.createElement("span");
+    card.className = "stat-card";
+    strong.textContent = String(value);
+    span.textContent = label;
+    card.append(strong, span);
+    statsSummary.appendChild(card);
+  });
+}
+
+function renderAllStats(rows) {
+  const events = rows.map(normalizedEvent);
+  renderStatsSummary(events);
+  renderStatsRows(events);
+  renderEventDetails(events);
+}
+
 async function renderAccessStats() {
-  renderStatsRows(readLocalAccessStats());
+  renderAllStats(readLocalAccessEvents());
   statsStatus.textContent = "Loading shared stats…";
   if (dataBackend !== "supabase") {
     statsStatus.textContent = "Showing activity saved on this device.";
@@ -259,7 +431,7 @@ async function renderAccessStats() {
   }
   await flushAccessEvents();
   const since = dateOffset(todayISO(), -29);
-  const { data, error } = await supabaseClient.rpc("get_journal_access_stats", {
+  const { data, error } = await supabaseClient.rpc("get_journal_access_details", {
     p_project_id: APP_CONFIG.projectId,
     p_requesting_username: currentUser.username,
     p_since: since
@@ -268,7 +440,7 @@ async function renderAccessStats() {
     statsStatus.textContent = "Showing this device only. Run the updated Supabase SQL for shared stats.";
     return;
   }
-  renderStatsRows(data || []);
+  renderAllStats(data || []);
   statsStatus.textContent = "Shared activity across devices.";
 }
 
@@ -298,10 +470,7 @@ function showJournal(user) {
   document.body.classList.remove("is-authenticating");
   loginScreen.hidden = true;
   accountBtn.textContent = user.role === "superuser" ? `${user.username} · Superuser` : user.username;
-  if (!accessSessionOpen) {
-    accessSessionOpen = true;
-    recordAccessEvent("open");
-  }
+  startAccessSession();
   if (!appStarted) {
     appStarted = true;
     startApp();
@@ -1024,6 +1193,7 @@ function fillHolidayDay(event) {
 
 async function openDate(targetDate, { saveCurrent = true } = {}) {
   if (!targetDate || isOpeningDate) return;
+  recordAccessEvent("view", { viewedDate: targetDate });
   isOpeningDate = true;
   setDateNavigationDisabled(true);
   window.clearTimeout(autoSaveTimer);
@@ -1457,10 +1627,7 @@ loginForm.addEventListener("submit", signIn);
 accountBtn.addEventListener("click", openAccountSettings);
 closeAccountBtn.addEventListener("click", () => accountDialog.close());
 signOutBtn.addEventListener("click", async () => {
-  if (accessSessionOpen) {
-    recordAccessEvent("close");
-    accessSessionOpen = false;
-  }
+  endAccessSession();
   await persistCurrentForm();
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
@@ -1558,14 +1725,15 @@ window.addEventListener("keydown", (event) => {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
     persistCurrentForm();
+    endAccessSession();
+  } else if (currentUser) {
+    startAccessSession();
   }
 });
 window.addEventListener("beforeprint", preparePrintLayout);
 window.addEventListener("afterprint", restoreScreenLayout);
 window.addEventListener("pagehide", () => {
-  if (!accessSessionOpen) return;
-  recordAccessEvent("close");
-  accessSessionOpen = false;
+  endAccessSession();
 });
 async function startApp() {
   createBlocks();

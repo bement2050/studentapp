@@ -193,3 +193,134 @@ revoke all on function public.record_journal_access(text, text, text, timestampt
 revoke all on function public.get_journal_access_stats(text, text, date) from public;
 grant execute on function public.record_journal_access(text, text, text, timestamptz, date) to anon;
 grant execute on function public.get_journal_access_stats(text, text, date) to anon;
+
+-- Detailed usage events. Event IDs make retries safe, while session IDs connect
+-- an opening with its closing event so active time can be calculated.
+create table if not exists public.journal_access_events (
+  id text primary key,
+  project_id text not null,
+  session_id text not null,
+  username text not null,
+  event_type text not null check (event_type in ('open', 'close', 'view')),
+  event_at timestamptz not null,
+  local_date date not null,
+  viewed_date date,
+  duration_seconds integer check (duration_seconds is null or duration_seconds >= 0),
+  timezone text not null default '',
+  device_type text not null default '',
+  browser text not null default '',
+  platform text not null default ''
+);
+
+create index if not exists journal_access_events_project_date_idx
+  on public.journal_access_events (project_id, local_date desc, event_at desc);
+create index if not exists journal_access_events_session_idx
+  on public.journal_access_events (session_id, event_at);
+
+alter table public.journal_access_events enable row level security;
+revoke all on public.journal_access_events from anon, authenticated;
+
+create or replace function public.record_journal_access_detail(
+  p_event_id text,
+  p_session_id text,
+  p_project_id text,
+  p_username text,
+  p_event text,
+  p_occurred_at timestamptz,
+  p_local_date date,
+  p_viewed_date date,
+  p_timezone text,
+  p_device_type text,
+  p_browser text,
+  p_platform text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  calculated_duration integer := null;
+  inserted_rows integer := 0;
+begin
+  if p_project_id <> 'sam-about-my-day'
+     or p_event not in ('open', 'close', 'view')
+     or lower(p_username) not in (
+       'jkarim', 'amamo', 'balemayehu', 'sgebreyes', 'gchere', 'talemayehu', 'aalemayehu'
+     ) then
+    raise exception 'Invalid access event';
+  end if;
+
+  if p_event = 'close' then
+    select greatest(0, round(extract(epoch from (p_occurred_at - min(event_at))))::integer)
+      into calculated_duration
+    from public.journal_access_events
+    where project_id = p_project_id
+      and session_id = p_session_id
+      and username = p_username
+      and event_type = 'open';
+  end if;
+
+  insert into public.journal_access_events (
+    id, project_id, session_id, username, event_type, event_at, local_date,
+    viewed_date, duration_seconds, timezone, device_type, browser, platform
+  ) values (
+    p_event_id, p_project_id, p_session_id, p_username, p_event, p_occurred_at,
+    p_local_date, p_viewed_date, calculated_duration, left(coalesce(p_timezone, ''), 100),
+    left(coalesce(p_device_type, ''), 40), left(coalesce(p_browser, ''), 80),
+    left(coalesce(p_platform, ''), 100)
+  ) on conflict (id) do nothing;
+
+  get diagnostics inserted_rows = row_count;
+  if inserted_rows = 0 or p_event = 'view' then return; end if;
+
+  insert into public.journal_access_stats (
+    project_id, date, username, opens, closes, last_opened_at, last_closed_at
+  ) values (
+    p_project_id, p_local_date, p_username,
+    case when p_event = 'open' then 1 else 0 end,
+    case when p_event = 'close' then 1 else 0 end,
+    case when p_event = 'open' then p_occurred_at else null end,
+    case when p_event = 'close' then p_occurred_at else null end
+  )
+  on conflict (project_id, date, username) do update set
+    opens = journal_access_stats.opens + case when p_event = 'open' then 1 else 0 end,
+    closes = journal_access_stats.closes + case when p_event = 'close' then 1 else 0 end,
+    last_opened_at = case when p_event = 'open' then p_occurred_at else journal_access_stats.last_opened_at end,
+    last_closed_at = case when p_event = 'close' then p_occurred_at else journal_access_stats.last_closed_at end;
+end;
+$$;
+
+create or replace function public.get_journal_access_details(
+  p_project_id text,
+  p_requesting_username text,
+  p_since date
+)
+returns table (
+  id text, session_id text, username text, event_type text, event_at timestamptz,
+  local_date date, viewed_date date, duration_seconds integer, timezone text,
+  device_type text, browser text, platform text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select events.id, events.session_id, events.username, events.event_type,
+    events.event_at, events.local_date, events.viewed_date, events.duration_seconds,
+    events.timezone, events.device_type, events.browser, events.platform
+  from public.journal_access_events events
+  where events.project_id = p_project_id
+    and events.local_date >= p_since
+    and exists (
+      select 1 from public.journal_stats_viewers viewer
+      where lower(viewer.username) = lower(p_requesting_username)
+        and viewer.role in ('admin', 'superuser')
+    )
+  order by events.event_at desc
+  limit 5000;
+$$;
+
+revoke all on function public.record_journal_access_detail(text, text, text, text, text, timestamptz, date, date, text, text, text, text) from public;
+revoke all on function public.get_journal_access_details(text, text, date) from public;
+grant execute on function public.record_journal_access_detail(text, text, text, text, text, timestamptz, date, date, text, text, text, text) to anon;
+grant execute on function public.get_journal_access_details(text, text, date) to anon;

@@ -140,13 +140,23 @@ select {
 
 .stats-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .stats-heading h3 { font-size: 1.15rem; }
+.access-stats h4 { margin: .35rem 0 -.25rem; }
+.stats-summary { display: grid; grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: .55rem; }
+.stat-card { padding: .65rem; border: 1px solid var(--line); border-radius: 12px; background: #f7faf8; }
+.stat-card strong { display: block; color: var(--green); font-size: 1.25rem; }
+.stat-card span { color: var(--muted); font-size: .72rem; font-weight: 700; }
 .stats-table-wrap { max-height: 270px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
+.stats-detail-wrap { max-height: 360px; }
 .access-stats table { width: 100%; border-collapse: collapse; font-size: .86rem; }
 .access-stats th,
 .access-stats td { padding: .55rem .65rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
 .access-stats th { position: sticky; top: 0; background: #eef5f1; color: var(--green); }
 .access-stats tbody tr:last-child td { border-bottom: 0; }
 .stats-status { min-height: 1.2em; margin: 0; color: var(--muted); font-size: .8rem; }
+
+@media (max-width: 600px) {
+  .stats-summary { grid-template-columns: repeat(2, 1fr); }
+}
 
 .emotion-symbols {
   position: absolute;

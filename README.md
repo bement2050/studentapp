@@ -77,6 +77,11 @@ Run the latest `supabase-public-access.sql` in Supabase SQL Editor to enable sha
 opening/closing totals across devices. Until then, the report uses activity from the
 current browser only.
 
+The privileged usage report includes per-user daily totals, exact opening and closing
+times, every journal date viewed, session duration, active/incomplete sessions, device
+type, browser, platform, and timezone. It retains up to 30 days in the report and is
+available only from an admin or superuser account.
+
 ## Supabase Central Storage Setup
 
 1. Open the Supabase project and select **SQL Editor**.
