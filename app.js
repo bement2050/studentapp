@@ -102,6 +102,11 @@ let autoSaveTimer = null;
 let isHydrating = false;
 let isOpeningDate = false;
 let currentPhotoEntryId = null;
+let currentEntryId = null;
+let currentEntryRevision = null;
+let formIsDirty = false;
+let formChangeVersion = 0;
+let saveInProgress = null;
 let activeDate = todayISO();
 const previewUrls = new Set();
 
@@ -829,7 +834,8 @@ async function addSelectedPhotos(input) {
   const selected = files.slice(0, availableSlots);
   if (!selected.length) return;
   setStatus(`Preparing ${selected.length} ${selected.length === 1 ? "photo" : "photos"}…`);
-  await persistCurrentForm();
+  const saved = await persistCurrentForm();
+  if (!saved) return;
   const entryId = keyForEntry(entryDateInput.value, childNameInput.value);
   currentPhotoEntryId = entryId;
 
@@ -937,7 +943,7 @@ async function fetchEntries() {
   return data.map(mapSupabaseRowToEntry);
 }
 
-async function upsertEntry(entry) {
+async function upsertEntry(entry, expectedRevision = null) {
   if (dataBackend !== "supabase") {
     throw new Error("Sign in is required before saving");
   }
@@ -952,13 +958,54 @@ async function upsertEntry(entry) {
     updated_at: entry.updatedAt
   };
 
-  const { error } = await supabaseClient
+  const { data: existing, error: readError } = await supabaseClient
     .from("about_my_day_entries")
-    .upsert(row, { onConflict: "id" });
+    .select("id, updated_at")
+    .eq("project_id", APP_CONFIG.projectId)
+    .eq("id", entry.id)
+    .maybeSingle();
+
+  if (readError) throw new Error(readError.message);
+
+  if (existing) {
+    if (!expectedRevision || expectedRevision !== existing.updated_at) {
+      const conflict = new Error("This day was updated in another tab or device. Reload it before making changes.");
+      conflict.code = "STALE_ENTRY";
+      throw conflict;
+    }
+
+    const { data, error } = await supabaseClient
+      .from("about_my_day_entries")
+      .update(row)
+      .eq("project_id", APP_CONFIG.projectId)
+      .eq("id", entry.id)
+      .eq("updated_at", existing.updated_at)
+      .select("updated_at")
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) {
+      const conflict = new Error("This day changed while it was being saved. Reload it and try again.");
+      conflict.code = "STALE_ENTRY";
+      throw conflict;
+    }
+    return data.updated_at;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("about_my_day_entries")
+    .insert(row)
+    .select("updated_at")
+    .single();
 
   if (error) {
-    throw new Error(error.message);
+    const conflict = new Error(error.code === "23505"
+      ? "This day was created in another tab or device. Reload it before making changes."
+      : error.message);
+    conflict.code = error.code === "23505" ? "STALE_ENTRY" : error.code;
+    throw conflict;
   }
+  return data.updated_at;
 }
 
 async function deleteEntry(entryId) {
@@ -1115,8 +1162,12 @@ function writeForm(entry) {
 
   updateFormProgress();
   updateCalendarNotice();
+  const displayedEntryId = keyForEntry(entryDateInput.value, childNameInput.value);
+  currentEntryId = displayedEntryId;
+  currentEntryRevision = entry.id === displayedEntryId ? entry.updatedAt || null : null;
+  formIsDirty = false;
   isHydrating = false;
-  loadPhotosForEntry(keyForEntry(entryDateInput.value, childNameInput.value));
+  loadPhotosForEntry(displayedEntryId);
 }
 
 function clearForm(keepHeader = false) {
@@ -1147,6 +1198,9 @@ function clearForm(keepHeader = false) {
 
   clearPhotoGalleries();
   currentPhotoEntryId = null;
+  currentEntryId = null;
+  currentEntryRevision = null;
+  formIsDirty = false;
 
   updateFormProgress();
   updateCalendarNotice();
@@ -1171,15 +1225,6 @@ function updateFormProgress() {
 
 }
 
-function formHasMeaningfulContent() {
-  return [...document.querySelectorAll(".day-block")].some((block) =>
-    block.querySelector(".mood-row input:checked")
-    || block.querySelector('input[type="checkbox"]:checked')
-    || block.querySelector("textarea").value.trim()
-    || block.querySelector(".photo-item")
-  );
-}
-
 function fillHolidayDay(event) {
   document.querySelectorAll(".day-block").forEach((block, index) => {
     const noteField = block.querySelector("textarea");
@@ -1199,9 +1244,14 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
   window.clearTimeout(autoSaveTimer);
   const previousDate = activeDate;
   try {
-    if (saveCurrent && previousDate && targetDate !== previousDate && formHasMeaningfulContent()) {
+    if (saveCurrent && previousDate && targetDate !== previousDate && formIsDirty) {
       entryDateInput.value = previousDate;
-      await persistCurrentForm();
+      const saved = await persistCurrentForm();
+      if (!saved) {
+        entryDateInput.value = previousDate;
+        activeDate = previousDate;
+        return;
+      }
     }
 
     const studentName = childNameInput.value.trim() || DEFAULT_CHILD_NAME;
@@ -1219,6 +1269,8 @@ async function openDate(targetDate, { saveCurrent = true } = {}) {
     clearForm(true);
     entryDateInput.value = targetDate;
     activeDate = targetDate;
+    currentEntryId = entryId;
+    currentEntryRevision = null;
     await loadPhotosForEntry(entryId);
     const holiday = calendarEventFor(targetDate);
     if (holiday?.kind === "holiday") fillHolidayDay(holiday);
@@ -1246,6 +1298,8 @@ function dateOffset(dateString, amount) {
 
 async function persistCurrentForm({ manual = false } = {}) {
   window.clearTimeout(autoSaveTimer);
+  if (saveInProgress) await saveInProgress;
+
   const entry = readCurrentForm();
 
   if (!entry.childName || !entry.date) {
@@ -1253,21 +1307,41 @@ async function persistCurrentForm({ manual = false } = {}) {
     return false;
   }
 
+  const savedVersion = formChangeVersion;
+  const expectedRevision = currentEntryId === entry.id ? currentEntryRevision : null;
+  const photoEntryId = currentPhotoEntryId;
+  const operation = (async () => {
+    try {
+      const savedRevision = await upsertEntry(entry, expectedRevision);
+      await movePhotoRecords(photoEntryId, entry.id);
+      currentEntryId = entry.id;
+      currentEntryRevision = savedRevision;
+      currentPhotoEntryId = entry.id;
+      if (savedVersion === formChangeVersion) formIsDirty = false;
+      setStatus(manual ? "✓ Saved" : "✓ Autosaved");
+      return true;
+    } catch (error) {
+      formIsDirty = true;
+      setStatus(error.code === "STALE_ENTRY"
+        ? error.message
+        : "Cloud save failed — keep this page open until the connection returns");
+      if (manual) alert(`Save failed: ${error.message}`);
+      return false;
+    }
+  })();
+
+  saveInProgress = operation;
   try {
-    await upsertEntry(entry);
-    await movePhotoRecords(currentPhotoEntryId, entry.id);
-    currentPhotoEntryId = entry.id;
-    setStatus(manual ? "✓ Saved" : "✓ Autosaved");
-    return true;
-  } catch (error) {
-    setStatus("Cloud save failed — keep this page open until the connection returns");
-    if (manual) alert(`Save failed: ${error.message}`);
-    return false;
+    return await operation;
+  } finally {
+    if (saveInProgress === operation) saveInProgress = null;
   }
 }
 
 function scheduleAutoSave() {
   if (isHydrating) return;
+  formIsDirty = true;
+  formChangeVersion += 1;
   updateFormProgress();
   updateCalendarNotice();
   setStatus("Saving changes…");
@@ -1457,7 +1531,7 @@ async function renderHistory() {
       try {
         await deleteEntry(entry.id);
         if (currentPhotoEntryId === entry.id) {
-          newDay();
+          await openDate(entry.date, { saveCurrent: false });
         }
         await renderHistory();
         setStatus("Past day deleted");
@@ -1669,6 +1743,8 @@ todayBtn.addEventListener("click", () => openDate(todayISO()));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
   if (event.target.matches(".day-block textarea")) {
+    formIsDirty = true;
+    formChangeVersion += 1;
     autoResizeNote(event.target);
     updateFormProgress();
     setStatus("Editing notes... tap Save on this check-in when done");

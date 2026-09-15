@@ -1,5 +1,5 @@
-const CACHE_NAME = "todays-journal-v32";
-const APP_FILES = ["./index.html", "./styles.css?v=32", "./app.js?v=32", "./manifest.json"];
+const CACHE_NAME = "todays-journal-v33";
+const APP_FILES = ["./index.html", "./styles.css?v=33", "./app.js?v=33", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_FILES)));
