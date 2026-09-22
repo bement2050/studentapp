@@ -524,12 +524,49 @@ button:focus-visible {
   font-size: 1.3rem;
 }
 
+.parent-notes-list {
+  display: grid;
+  gap: .7rem;
+}
+
+.parent-note-item {
+  display: grid;
+  gap: .45rem;
+  padding: .75rem;
+  border: 1px solid #cbdced;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.parent-note-item-header,
+.parent-note-item-actions {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.parent-note-item-header {
+  justify-content: space-between;
+}
+
+.parent-note-item-title {
+  color: #294d77;
+  font-size: .8rem;
+}
+
 .parent-note-field textarea {
   min-height: 5.5rem;
   border-color: #aec8e7;
   background: rgba(255, 255, 255, .9);
   line-height: 1.4;
   resize: vertical;
+}
+
+.parent-note-item:not(.is-editing) .parent-note-field textarea {
+  border-style: dashed;
+  background: #f7f9fb;
+  color: #39514b;
+  resize: none;
 }
 
 .parent-note-field textarea:focus {
@@ -543,20 +580,52 @@ button:focus-visible {
   font-weight: 700;
 }
 
-.parent-note-save {
-  min-height: 36px;
-  padding: .35rem .8rem;
-  border: 0;
+.parent-note-edit,
+.parent-note-save,
+.parent-note-remove,
+.parent-note-add {
+  min-height: 32px;
+  padding: .25rem .65rem;
+  border: 1px solid #a9c3df;
   border-radius: 999px;
-  background: #3977c3;
-  color: #fff;
-  font-size: .76rem;
+  background: #fff;
+  color: #326bb0;
+  font-size: .72rem;
   font-weight: 900;
   cursor: pointer;
 }
 
-.parent-note-save:hover {
+.parent-note-save,
+.parent-note-add {
+  border-color: #3977c3;
+  background: #3977c3;
+  color: #fff;
+}
+
+.parent-note-remove {
+  border-color: transparent;
+  background: transparent;
+  color: var(--danger);
+}
+
+.parent-note-edit:not(:disabled):hover,
+.parent-note-save:not(:disabled):hover,
+.parent-note-add:hover {
   background: #285d9e;
+  color: #fff;
+}
+
+.parent-note-edit:disabled,
+.parent-note-save:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+.parent-note-count {
+  justify-self: end;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
 }
 
 .day-block {
@@ -812,12 +881,6 @@ fieldset label input:checked + span {
   border-color: #1877f2;
   background: #e7f1ff;
   color: #1877f2;
-}
-
-.reaction-btn[data-reaction="dislike"].is-selected {
-  border-color: #bd5259;
-  background: #fff0f1;
-  color: #a23c45;
 }
 
 .photo-section {
@@ -1891,30 +1954,109 @@ h1 {
 }
 
 @media (max-width: 520px) {
+  .app-shell {
+    width: calc(100% - .3rem);
+    margin-top: .15rem;
+    margin-bottom: .6rem;
+    gap: .4rem;
+  }
+
+  .hero {
+    gap: .4rem;
+    padding: .55rem .65rem;
+  }
+
+  .hero-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .3rem;
+  }
+
+  .meta-panel,
   .parent-note-card {
-    padding: .8rem;
+    padding: .6rem;
   }
 
   .parent-note-icon {
     display: none;
   }
 
-  .comment-reactions {
-    align-items: flex-start;
-    flex-direction: column;
+  .parent-note-heading p,
+  .parent-note-footer > span,
+  .character-count,
+  .parent-note-count {
+    display: none;
   }
 
-  .reaction-actions,
+  .parent-note-card,
+  .parent-notes-list,
+  .parent-note-item {
+    gap: .45rem;
+  }
+
+  .parent-note-item {
+    padding: .55rem;
+    border-radius: 11px;
+  }
+
+  .parent-note-item-header {
+    gap: .25rem;
+  }
+
+  .parent-note-item-actions {
+    gap: .2rem;
+  }
+
+  .parent-note-item-actions button {
+    min-height: 30px;
+    padding: .2rem .42rem;
+    font-size: .66rem;
+  }
+
+  .parent-note-field textarea {
+    min-height: 68px;
+    padding: .4rem .5rem;
+  }
+
+  .parent-note-footer {
+    justify-content: flex-end;
+  }
+
+  .parent-note-add {
+    min-height: 34px;
+  }
+
+  .comment-reactions {
+    align-items: center;
+    padding-top: .4rem;
+  }
+
   .reaction-btn {
-    flex: 1;
+    min-height: 32px;
   }
 
   .reaction-actions {
-    width: 100%;
+    width: auto;
   }
 
-  .reaction-btn {
-    justify-content: center;
+  .section-heading {
+    margin: 0 .1rem -.2rem;
+  }
+
+  .day-block {
+    gap: .45rem;
+    padding: .6rem;
+  }
+
+  .notes-wrap textarea {
+    min-height: 72px;
+  }
+
+  .photo-section {
+    gap: .25rem;
+  }
+
+  .support-row {
+    padding-top: .1rem;
   }
 }
 

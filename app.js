@@ -71,9 +71,8 @@ const paperEntryDate = document.getElementById("paperEntryDate");
 const paperStaffInitials = document.getElementById("paperStaffInitials");
 const paperRows = document.getElementById("paperRows");
 const paperParentNote = document.getElementById("paperParentNote");
-const parentNoteInput = document.getElementById("parentNote");
-const parentNoteCount = document.getElementById("parentNoteCount");
-const saveParentNoteBtn = document.getElementById("saveParentNoteBtn");
+const parentNotesList = document.getElementById("parentNotesList");
+const addParentNoteBtn = document.getElementById("addParentNoteBtn");
 const loginScreen = document.getElementById("loginScreen");
 const loginForm = document.getElementById("loginForm");
 const loginUsername = document.getElementById("loginUsername");
@@ -1070,6 +1069,71 @@ function setBlockReaction(block, reaction = "") {
   });
 }
 
+function parentNoteValues() {
+  return [...parentNotesList.querySelectorAll(".parent-note-item textarea")]
+    .map((textArea) => textArea.value.trim())
+    .filter(Boolean);
+}
+
+function updateParentNoteItems() {
+  const items = [...parentNotesList.querySelectorAll(".parent-note-item")];
+  items.forEach((item, index) => {
+    const title = item.querySelector(".parent-note-item-title");
+    const textArea = item.querySelector("textarea");
+    const count = item.querySelector(".parent-note-count");
+    title.textContent = `Parent note ${index + 1}`;
+    count.textContent = `${textArea.value.length} / 1000`;
+  });
+}
+
+function setParentNoteEditState(item, isEditing) {
+  const textArea = item.querySelector("textarea");
+  const editButton = item.querySelector(".parent-note-edit");
+  const saveButton = item.querySelector(".parent-note-save");
+  textArea.readOnly = !isEditing;
+  item.classList.toggle("is-editing", isEditing);
+  editButton.disabled = isEditing;
+  saveButton.disabled = !isEditing;
+  autoResizeNote(textArea);
+
+  if (isEditing) {
+    const at = textArea.value.length;
+    textArea.focus();
+    textArea.setSelectionRange(at, at);
+  }
+}
+
+function createParentNoteItem(note = "", { editing = false } = {}) {
+  const item = document.createElement("article");
+  item.className = "parent-note-item";
+  item.innerHTML = `
+    <div class="parent-note-item-header">
+      <strong class="parent-note-item-title"></strong>
+      <div class="parent-note-item-actions">
+        <button type="button" class="parent-note-remove" aria-label="Remove parent note">Remove</button>
+        <button type="button" class="parent-note-edit">Edit</button>
+        <button type="button" class="parent-note-save">Save</button>
+      </div>
+    </div>
+    <label class="parent-note-field">
+      <span class="sr-only">Parent note</span>
+      <textarea rows="3" maxlength="1000" placeholder="Write a note about today..."></textarea>
+    </label>
+    <span class="parent-note-count">0 / 1000</span>`;
+  const textArea = item.querySelector("textarea");
+  textArea.value = note;
+  parentNotesList.appendChild(item);
+  updateParentNoteItems();
+  setParentNoteEditState(item, editing);
+  return item;
+}
+
+function renderParentNotes(notes = []) {
+  parentNotesList.innerHTML = "";
+  const validNotes = Array.isArray(notes) ? notes.filter((note) => typeof note === "string") : [];
+  (validNotes.length ? validNotes : [""]).forEach((note) => createParentNoteItem(note));
+}
+
 async function saveBlockNote(block) {
   setNoteEditState(block, false);
   updateFormProgress();
@@ -1109,7 +1173,7 @@ function createBlocks() {
 }
 
 function readCurrentForm() {
-  const dailyParentNote = parentNoteInput.value.trim();
+  const parentNotes = parentNoteValues();
   const blocks = [...document.querySelectorAll(".day-block")].map((block, index) => {
     const selectedMoods = [
       ...block.querySelectorAll(".mood-row input:checked")
@@ -1125,7 +1189,7 @@ function readCurrentForm() {
       activities: checkedActivities.map((item) => item.value),
       notes: block.querySelector("textarea").value.trim(),
       reaction: block.dataset.reaction || "",
-      ...(index === 0 ? { dailyParentNote } : {}),
+      ...(index === 0 ? { parentNotes } : {}),
       speech: block.querySelector(".speech").checked,
       ot: block.querySelector(".ot").checked
     };
@@ -1148,7 +1212,9 @@ function writeForm(entry) {
   entryDateInput.value = entry.date || todayISO();
   activeDate = entryDateInput.value;
   staffInitialsInput.value = entry.staffInitials || "";
-  parentNoteInput.value = entry.parentNote || entry.blocks?.[0]?.dailyParentNote || "";
+  const storedParentNotes = entry.blocks?.[0]?.parentNotes;
+  const legacyParentNote = entry.parentNote || entry.blocks?.[0]?.dailyParentNote || "";
+  renderParentNotes(Array.isArray(storedParentNotes) ? storedParentNotes : [legacyParentNote].filter(Boolean));
 
   const blockElements = document.querySelectorAll(".day-block");
   blockElements.forEach((element, i) => {
@@ -1172,7 +1238,7 @@ function writeForm(entry) {
 
     const noteField = element.querySelector("textarea");
     noteField.value = block.notes || "";
-    setBlockReaction(element, block.reaction || "");
+    setBlockReaction(element, block.reaction === "like" ? "like" : "");
     setNoteEditState(element, false);
     setMoodLockState(element, true);
     element.querySelector(".speech").checked = Boolean(block.speech);
@@ -1215,7 +1281,7 @@ function clearForm(keepHeader = false) {
     }
   });
 
-  parentNoteInput.value = "";
+  renderParentNotes();
   document.querySelectorAll(".day-block").forEach((block) => setBlockReaction(block));
 
   clearPhotoGalleries();
@@ -1245,7 +1311,7 @@ function updateFormProgress() {
     count.textContent = `${note.value.length} characters`;
   });
 
-  parentNoteCount.textContent = `${parentNoteInput.value.length} / 1000`;
+  updateParentNoteItems();
 
 }
 
@@ -1400,7 +1466,7 @@ async function copyLastDay() {
   const copiedBlocks = (previous.blocks || []).map((block, index) => ({
     ...block,
     reaction: "",
-    ...(index === 0 ? { dailyParentNote: "" } : {})
+    ...(index === 0 ? { parentNotes: [], dailyParentNote: "" } : {})
   }));
   writeForm({ ...previous, ...header, blocks: copiedBlocks });
   scheduleAutoSave();
@@ -1428,7 +1494,10 @@ function sampleEntry() {
       activities: sampleBlocks[index][1],
       notes: sampleBlocks[index][2],
       reaction: index === 0 ? "like" : "",
-      ...(index === 0 ? { dailyParentNote: "Sam had a great evening and was excited to talk about music today. Thank you!" } : {}),
+      ...(index === 0 ? { parentNotes: [
+        "Sam had a great evening and was excited to talk about music today. Thank you!",
+        "Please remind him that Grandma will pick him up tomorrow."
+      ] } : {}),
       speech: sampleBlocks[index][3],
       ot: sampleBlocks[index][4]
     }))
@@ -1632,7 +1701,10 @@ function preparePrintLayout() {
     year: "numeric"
   }).format(new Date(`${entry.date}T12:00:00`));
   paperStaffInitials.textContent = entry.staffInitials || DEFAULT_STAFF_INITIALS;
-  paperParentNote.textContent = entry.blocks?.[0]?.dailyParentNote || "No parent note added.";
+  const printParentNotes = entry.blocks?.[0]?.parentNotes || [];
+  paperParentNote.textContent = printParentNotes.length
+    ? printParentNotes.map((note, index) => `${index + 1}. ${note}`).join("\n")
+    : "No parent note added.";
   paperRows.innerHTML = "";
 
   const moods = [
@@ -1729,9 +1801,9 @@ function restoreScreenLayout() {
 }
 
 printBtn.addEventListener("click", printCurrentDay);
-saveParentNoteBtn.addEventListener("click", async () => {
-  const saved = await persistCurrentForm({ manual: true });
-  if (saved) setStatus("✓ Parent note saved");
+addParentNoteBtn.addEventListener("click", () => {
+  createParentNoteItem("", { editing: true });
+  setStatus("New parent note ready to edit");
 });
 loginForm.addEventListener("submit", signIn);
 accountBtn.addEventListener("click", openAccountSettings);
@@ -1778,9 +1850,12 @@ nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
-  if (event.target === parentNoteInput) {
-    scheduleAutoSave();
-    setStatus("Saving parent note…");
+  if (event.target.matches(".parent-note-item textarea")) {
+    formIsDirty = true;
+    formChangeVersion += 1;
+    autoResizeNote(event.target);
+    updateParentNoteItems();
+    setStatus("Editing parent note... tap Save when done");
     return;
   }
   if (event.target.matches(".day-block textarea")) {
@@ -1795,6 +1870,41 @@ document.querySelector(".app-shell").addEventListener("input", (event) => {
 });
 document.querySelector(".app-shell").addEventListener("change", (event) => {
   if (!event.target.matches(".photo-input, #entryDate")) scheduleAutoSave();
+});
+parentNotesList.addEventListener("click", async (event) => {
+  const item = event.target.closest(".parent-note-item");
+  if (!item) return;
+
+  if (event.target.closest(".parent-note-edit")) {
+    setParentNoteEditState(item, true);
+    setStatus("Parent note unlocked for editing");
+    return;
+  }
+
+  if (event.target.closest(".parent-note-remove")) {
+    const items = parentNotesList.querySelectorAll(".parent-note-item");
+    if (items.length === 1) {
+      item.querySelector("textarea").value = "";
+      setParentNoteEditState(item, false);
+    } else {
+      item.remove();
+    }
+    formIsDirty = true;
+    formChangeVersion += 1;
+    updateParentNoteItems();
+    const saved = await persistCurrentForm({ manual: true });
+    if (saved) setStatus("✓ Parent note removed");
+    return;
+  }
+
+  if (event.target.closest(".parent-note-save")) {
+    const textArea = item.querySelector("textarea");
+    if (!textArea.value.trim() && parentNotesList.children.length > 1) item.remove();
+    else setParentNoteEditState(item, false);
+    updateParentNoteItems();
+    const saved = await persistCurrentForm({ manual: true });
+    if (saved) setStatus("✓ Parent note saved");
+  }
 });
 blocksContainer.addEventListener("click", async (event) => {
   const reactionButton = event.target.closest(".reaction-btn");
@@ -1867,6 +1977,7 @@ window.addEventListener("pagehide", () => {
 });
 async function startApp() {
   createBlocks();
+  renderParentNotes();
   applyRememberedDetails();
   updateFormProgress();
   updateCalendarNotice();
