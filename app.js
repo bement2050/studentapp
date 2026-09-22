@@ -70,6 +70,10 @@ const paperStudentName = document.getElementById("paperStudentName");
 const paperEntryDate = document.getElementById("paperEntryDate");
 const paperStaffInitials = document.getElementById("paperStaffInitials");
 const paperRows = document.getElementById("paperRows");
+const paperParentNote = document.getElementById("paperParentNote");
+const parentNoteInput = document.getElementById("parentNote");
+const parentNoteCount = document.getElementById("parentNoteCount");
+const saveParentNoteBtn = document.getElementById("saveParentNoteBtn");
 const loginScreen = document.getElementById("loginScreen");
 const loginForm = document.getElementById("loginForm");
 const loginUsername = document.getElementById("loginUsername");
@@ -1057,6 +1061,15 @@ function setMoodLockState(block, isLocked) {
   moodButton.setAttribute("aria-label", isLocked ? "Edit emotions" : "Save emotions");
 }
 
+function setBlockReaction(block, reaction = "") {
+  block.dataset.reaction = reaction;
+  block.querySelectorAll(".reaction-btn").forEach((button) => {
+    const isSelected = button.dataset.reaction === reaction;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  });
+}
+
 async function saveBlockNote(block) {
   setNoteEditState(block, false);
   updateFormProgress();
@@ -1088,6 +1101,7 @@ function createBlocks() {
     });
 
     setMoodLockState(article, true);
+    setBlockReaction(article);
 
     article.dataset.blockIndex = String(index);
     blocksContainer.appendChild(clone);
@@ -1095,7 +1109,8 @@ function createBlocks() {
 }
 
 function readCurrentForm() {
-  const blocks = [...document.querySelectorAll(".day-block")].map((block) => {
+  const dailyParentNote = parentNoteInput.value.trim();
+  const blocks = [...document.querySelectorAll(".day-block")].map((block, index) => {
     const selectedMoods = [
       ...block.querySelectorAll(".mood-row input:checked")
     ].map((input) => input.value);
@@ -1109,6 +1124,8 @@ function readCurrentForm() {
       moods: selectedMoods,
       activities: checkedActivities.map((item) => item.value),
       notes: block.querySelector("textarea").value.trim(),
+      reaction: block.dataset.reaction || "",
+      ...(index === 0 ? { dailyParentNote } : {}),
       speech: block.querySelector(".speech").checked,
       ot: block.querySelector(".ot").checked
     };
@@ -1131,6 +1148,7 @@ function writeForm(entry) {
   entryDateInput.value = entry.date || todayISO();
   activeDate = entryDateInput.value;
   staffInitialsInput.value = entry.staffInitials || "";
+  parentNoteInput.value = entry.parentNote || entry.blocks?.[0]?.dailyParentNote || "";
 
   const blockElements = document.querySelectorAll(".day-block");
   blockElements.forEach((element, i) => {
@@ -1154,6 +1172,7 @@ function writeForm(entry) {
 
     const noteField = element.querySelector("textarea");
     noteField.value = block.notes || "";
+    setBlockReaction(element, block.reaction || "");
     setNoteEditState(element, false);
     setMoodLockState(element, true);
     element.querySelector(".speech").checked = Boolean(block.speech);
@@ -1196,6 +1215,9 @@ function clearForm(keepHeader = false) {
     }
   });
 
+  parentNoteInput.value = "";
+  document.querySelectorAll(".day-block").forEach((block) => setBlockReaction(block));
+
   clearPhotoGalleries();
   currentPhotoEntryId = null;
   currentEntryId = null;
@@ -1222,6 +1244,8 @@ function updateFormProgress() {
     const count = block.querySelector(".character-count");
     count.textContent = `${note.value.length} characters`;
   });
+
+  parentNoteCount.textContent = `${parentNoteInput.value.length} / 1000`;
 
 }
 
@@ -1373,7 +1397,12 @@ async function copyLastDay() {
     staffInitials: staffInitialsInput.value || previous.staffInitials,
     date: entryDateInput.value || todayISO()
   };
-  writeForm({ ...previous, ...header });
+  const copiedBlocks = (previous.blocks || []).map((block, index) => ({
+    ...block,
+    reaction: "",
+    ...(index === 0 ? { dailyParentNote: "" } : {})
+  }));
+  writeForm({ ...previous, ...header, blocks: copiedBlocks });
   scheduleAutoSave();
   setStatus(`Copied check-ins from ${formatEntryDate(previous.date)}`);
 }
@@ -1398,6 +1427,8 @@ function sampleEntry() {
       moods: sampleBlocks[index][0],
       activities: sampleBlocks[index][1],
       notes: sampleBlocks[index][2],
+      reaction: index === 0 ? "like" : "",
+      ...(index === 0 ? { dailyParentNote: "Sam had a great evening and was excited to talk about music today. Thank you!" } : {}),
       speech: sampleBlocks[index][3],
       ot: sampleBlocks[index][4]
     }))
@@ -1601,6 +1632,7 @@ function preparePrintLayout() {
     year: "numeric"
   }).format(new Date(`${entry.date}T12:00:00`));
   paperStaffInitials.textContent = entry.staffInitials || DEFAULT_STAFF_INITIALS;
+  paperParentNote.textContent = entry.blocks?.[0]?.dailyParentNote || "No parent note added.";
   paperRows.innerHTML = "";
 
   const moods = [
@@ -1697,6 +1729,10 @@ function restoreScreenLayout() {
 }
 
 printBtn.addEventListener("click", printCurrentDay);
+saveParentNoteBtn.addEventListener("click", async () => {
+  const saved = await persistCurrentForm({ manual: true });
+  if (saved) setStatus("✓ Parent note saved");
+});
 loginForm.addEventListener("submit", signIn);
 accountBtn.addEventListener("click", openAccountSettings);
 closeAccountBtn.addEventListener("click", () => accountDialog.close());
@@ -1742,6 +1778,11 @@ nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
+  if (event.target === parentNoteInput) {
+    scheduleAutoSave();
+    setStatus("Saving parent note…");
+    return;
+  }
   if (event.target.matches(".day-block textarea")) {
     formIsDirty = true;
     formChangeVersion += 1;
@@ -1756,6 +1797,19 @@ document.querySelector(".app-shell").addEventListener("change", (event) => {
   if (!event.target.matches(".photo-input, #entryDate")) scheduleAutoSave();
 });
 blocksContainer.addEventListener("click", async (event) => {
+  const reactionButton = event.target.closest(".reaction-btn");
+  if (reactionButton) {
+    const block = reactionButton.closest(".day-block");
+    if (!block) return;
+    const reaction = block.dataset.reaction === reactionButton.dataset.reaction
+      ? ""
+      : reactionButton.dataset.reaction;
+    setBlockReaction(block, reaction);
+    scheduleAutoSave();
+    setStatus(reaction ? `Reaction updated: ${reaction} — saving…` : "Reaction removed — saving…");
+    return;
+  }
+
   const moodButton = event.target.closest(".mood-lock-btn");
   if (moodButton) {
     const block = moodButton.closest(".day-block");

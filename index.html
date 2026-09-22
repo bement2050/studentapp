@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=33" />
+    <link rel="stylesheet" href="styles.css?v=34" />
   </head>
   <body class="is-authenticating">
     <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -135,6 +135,25 @@
 
       <p id="syncStatus" class="sync-status" role="status" aria-live="polite"></p>
 
+      <section class="panel parent-note-card" aria-labelledby="parentNoteTitle">
+        <div class="parent-note-heading">
+          <div>
+            <span class="parent-note-kicker">Family connection</span>
+            <h2 id="parentNoteTitle">Parent note for today</h2>
+            <p>Share a question, update, or encouragement for the team.</p>
+          </div>
+          <span class="parent-note-icon" aria-hidden="true">&#128172;</span>
+        </div>
+        <label class="parent-note-field" for="parentNote">
+          <span class="sr-only">Parent note</span>
+          <textarea id="parentNote" rows="3" maxlength="1000" placeholder="Write a note about today..."></textarea>
+        </label>
+        <div class="parent-note-footer">
+          <span id="parentNoteCount">0 / 1000</span>
+          <button id="saveParentNoteBtn" class="parent-note-save" type="button">Save parent note</button>
+        </div>
+      </section>
+
       <div class="section-heading">
         <h2>Check-ins</h2>
       </div>
@@ -159,6 +178,10 @@
         <span>Staff: <strong id="paperStaffInitials"></strong></span>
       </div>
       <div id="paperRows" class="paper-rows"></div>
+      <section class="paper-parent-note">
+        <strong>Parent note:</strong>
+        <span id="paperParentNote"></span>
+      </section>
       <footer class="paper-sheet-footer">Speech and O.T. supports are marked for each check-in.</footer>
     </section>
 
@@ -203,6 +226,20 @@
           <textarea rows="4" placeholder="What happened during this part of the day?" readonly></textarea>
           <span class="character-count">0 characters</span>
         </label>
+
+        <div class="comment-reactions" aria-label="Parent reaction to this comment">
+          <span class="reaction-label">Was this update helpful?</span>
+          <div class="reaction-actions">
+            <button type="button" class="reaction-btn" data-reaction="like" aria-pressed="false" aria-label="Like this comment">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.5Zm2 10V10l3.9-6.1c.6-.9 2-.5 2 .6v4h4.1a2.5 2.5 0 0 1 2.4 3.2l-2.1 7a2.5 2.5 0 0 1-2.4 1.8H9.5Z"/></svg>
+              <span>Like</span>
+            </button>
+            <button type="button" class="reaction-btn" data-reaction="dislike" aria-pressed="false" aria-label="Dislike this comment">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 13.5v-10H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3.5Zm2-10V14l3.9 6.1c.6.9 2 .5 2-.6v-4h4.1a2.5 2.5 0 0 0 2.4-3.2l-2.1-7a2.5 2.5 0 0 0-2.4-1.8H9.5Z"/></svg>
+              <span>Dislike</span>
+            </button>
+          </div>
+        </div>
 
         <section class="photo-section" aria-label="Photos from this part of the day">
           <div class="photo-heading">
@@ -290,6 +327,6 @@
       </form>
     </dialog>
 
-    <script src="app.js?v=33"></script>
+    <script src="app.js?v=34"></script>
   </body>
 </html>
