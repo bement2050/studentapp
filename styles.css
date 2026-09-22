@@ -892,10 +892,33 @@ fieldset label input:checked + span {
   border-top: 1px solid #e3e8e5;
 }
 
+.day-block:not(.has-note) .comment-reactions {
+  display: none;
+}
+
 .reaction-label {
   color: var(--muted);
   font-size: .74rem;
   font-weight: 700;
+}
+
+.reaction-copy {
+  display: grid;
+  gap: .08rem;
+  min-width: 0;
+}
+
+.comment-liked-by {
+  overflow: hidden;
+  color: #536761;
+  font-size: .68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-liked-by[hidden] {
+  display: none;
 }
 
 .reaction-actions {
@@ -2012,12 +2035,28 @@ h1 {
     width: calc(100% - .3rem);
     margin-top: .15rem;
     margin-bottom: .6rem;
-    gap: .4rem;
+    gap: .32rem;
+    font-size: .86rem;
   }
 
   .hero {
-    gap: .4rem;
-    padding: .55rem .65rem;
+    grid-template-columns: minmax(0, 1fr) 128px;
+    gap: .3rem .45rem;
+    padding: .45rem .55rem;
+  }
+
+  h1 {
+    font-size: 1.28rem;
+  }
+
+  .hero-date-picker,
+  .hero-date-picker input {
+    width: 128px;
+  }
+
+  .hero-date-picker input {
+    min-height: 36px;
+    height: 36px;
   }
 
   .hero-actions {
@@ -2027,7 +2066,25 @@ h1 {
 
   .meta-panel,
   .parent-note-card {
-    padding: .6rem;
+    padding: .5rem;
+  }
+
+  .meta-panel {
+    gap: .35rem;
+  }
+
+  .meta-panel input {
+    min-height: 36px;
+    height: 36px;
+  }
+
+  .parent-note-heading h2 {
+    font-size: 1rem;
+  }
+
+  .parent-note-kicker {
+    margin-bottom: .05rem;
+    font-size: .58rem;
   }
 
   .parent-note-icon {
@@ -2044,7 +2101,7 @@ h1 {
   .parent-note-card,
   .parent-notes-list,
   .parent-note-item {
-    gap: .45rem;
+    gap: .35rem;
   }
 
   .parent-note-item {
@@ -2067,7 +2124,7 @@ h1 {
   }
 
   .parent-note-field textarea {
-    min-height: 68px;
+    min-height: 62px;
     padding: .4rem .5rem;
   }
 
@@ -2103,16 +2160,58 @@ h1 {
   }
 
   .section-heading {
-    margin: 0 .1rem -.2rem;
+    margin: 0 .1rem -.22rem;
+  }
+
+  .section-heading h2 {
+    font-size: 1rem;
   }
 
   .day-block {
-    gap: .45rem;
-    padding: .6rem;
+    gap: .38rem;
+    padding: .5rem;
+  }
+
+  .block-head h3 {
+    font-size: 1rem;
+  }
+
+  .badge {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  legend small {
+    display: none;
+  }
+
+  fieldset {
+    gap: .25rem .3rem;
+  }
+
+  fieldset label span {
+    min-height: 36px;
+    padding: .28rem .43rem;
+    font-size: .74rem;
+  }
+
+  .emotion-icon {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .notes-wrap textarea {
-    min-height: 72px;
+    min-height: 64px;
+  }
+
+  .notes-header {
+    gap: .4rem;
+  }
+
+  .note-edit-btn,
+  .note-save-btn {
+    min-height: 30px;
+    padding: .18rem .5rem;
   }
 
   .photo-section {
@@ -2120,7 +2219,16 @@ h1 {
   }
 
   .support-row {
-    padding-top: .1rem;
+    gap: .4rem;
+    padding-top: 0;
+  }
+
+  .date-navigator {
+    padding: .25rem;
+  }
+
+  .date-nav-btn {
+    min-height: 36px;
   }
 }
 

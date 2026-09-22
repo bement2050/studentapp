@@ -482,6 +482,11 @@ function showJournal(user) {
   if (!appStarted) {
     appStarted = true;
     startApp();
+  } else {
+    document.querySelectorAll(".day-block").forEach((block) => {
+      setBlockLikes(block, block.commentLikedBy || []);
+    });
+    updateParentNoteItems();
   }
 }
 
@@ -1060,13 +1065,23 @@ function setMoodLockState(block, isLocked) {
   moodButton.setAttribute("aria-label", isLocked ? "Edit emotions" : "Save emotions");
 }
 
-function setBlockReaction(block, reaction = "") {
-  block.dataset.reaction = reaction;
-  block.querySelectorAll(".reaction-btn").forEach((button) => {
-    const isSelected = button.dataset.reaction === reaction;
-    button.classList.toggle("is-selected", isSelected);
-    button.setAttribute("aria-pressed", String(isSelected));
-  });
+function setBlockLikes(block, likedBy = []) {
+  const normalizedLikes = Array.isArray(likedBy)
+    ? [...new Set(likedBy.map((username) => String(username).trim()).filter(Boolean))]
+    : [];
+  const username = currentUser?.username || "";
+  const isLikedByCurrentUser = normalizedLikes.includes(username);
+  const button = block.querySelector(".reaction-btn");
+  const buttonText = button.querySelector("span");
+  const likedByText = block.querySelector(".comment-liked-by");
+
+  block.commentLikedBy = normalizedLikes;
+  button.classList.toggle("is-selected", isLikedByCurrentUser);
+  button.setAttribute("aria-pressed", String(isLikedByCurrentUser));
+  button.setAttribute("aria-label", isLikedByCurrentUser ? "Remove your like from this comment" : "Like this comment");
+  buttonText.textContent = isLikedByCurrentUser ? "Unlike" : "Like";
+  likedByText.textContent = normalizedLikes.length ? `Liked by ${normalizedLikes.join(", ")}` : "";
+  likedByText.hidden = normalizedLikes.length === 0;
 }
 
 function createParentNoteId() {
@@ -1185,7 +1200,7 @@ function renderParentNotes(notes = []) {
   const validNotes = Array.isArray(notes)
     ? notes.filter((note) => typeof note === "string" || (note && typeof note === "object"))
     : [];
-  (validNotes.length ? validNotes : [""]).forEach((note) => createParentNoteItem(note));
+  validNotes.forEach((note) => createParentNoteItem(note));
 }
 
 async function saveBlockNote(block) {
@@ -1219,7 +1234,7 @@ function createBlocks() {
     });
 
     setMoodLockState(article, true);
-    setBlockReaction(article);
+    setBlockLikes(article);
 
     article.dataset.blockIndex = String(index);
     blocksContainer.appendChild(clone);
@@ -1242,7 +1257,7 @@ function readCurrentForm() {
       moods: selectedMoods,
       activities: checkedActivities.map((item) => item.value),
       notes: block.querySelector("textarea").value.trim(),
-      reaction: block.dataset.reaction || "",
+      commentLikedBy: Array.isArray(block.commentLikedBy) ? block.commentLikedBy : [],
       ...(index === 0 ? { parentNotes } : {}),
       speech: block.querySelector(".speech").checked,
       ot: block.querySelector(".ot").checked
@@ -1292,7 +1307,7 @@ function writeForm(entry) {
 
     const noteField = element.querySelector("textarea");
     noteField.value = block.notes || "";
-    setBlockReaction(element, block.reaction === "like" ? "like" : "");
+    setBlockLikes(element, block.commentLikedBy || []);
     setNoteEditState(element, false);
     setMoodLockState(element, true);
     element.querySelector(".speech").checked = Boolean(block.speech);
@@ -1336,7 +1351,7 @@ function clearForm(keepHeader = false) {
   });
 
   renderParentNotes();
-  document.querySelectorAll(".day-block").forEach((block) => setBlockReaction(block));
+  document.querySelectorAll(".day-block").forEach((block) => setBlockLikes(block));
 
   clearPhotoGalleries();
   currentPhotoEntryId = null;
@@ -1363,6 +1378,7 @@ function updateFormProgress() {
 
     const count = block.querySelector(".character-count");
     count.textContent = `${note.value.length} characters`;
+    block.classList.toggle("has-note", Boolean(note.value.trim()));
   });
 
   updateParentNoteItems();
@@ -1520,6 +1536,7 @@ async function copyLastDay() {
   const copiedBlocks = (previous.blocks || []).map((block, index) => ({
     ...block,
     reaction: "",
+    commentLikedBy: [],
     ...(index === 0 ? { parentNotes: [], dailyParentNote: "" } : {})
   }));
   writeForm({ ...previous, ...header, blocks: copiedBlocks });
@@ -1547,7 +1564,7 @@ function sampleEntry() {
       moods: sampleBlocks[index][0],
       activities: sampleBlocks[index][1],
       notes: sampleBlocks[index][2],
-      reaction: index === 0 ? "like" : "",
+      commentLikedBy: [],
       ...(index === 0 ? { parentNotes: [
         "Sam had a great evening and was excited to talk about music today. Thank you!",
         "Please remind him that Grandma will pick him up tomorrow."
@@ -1829,7 +1846,10 @@ function preparePrintLayout() {
     notesTitle.className = "paper-notes-title";
     notesTitle.textContent = "Notes:";
     noteText.className = "paper-note-text";
-    noteText.textContent = block.notes || "";
+    const commentLikes = block.commentLikedBy?.length
+      ? `\nLiked by ${block.commentLikedBy.join(", ")}`
+      : "";
+    noteText.textContent = `${block.notes || ""}${commentLikes}`;
     supports.className = "paper-supports";
     supports.textContent = `${block.speech ? "☒" : "☐"} speech     ${block.ot ? "☒" : "☐"} O.T.`;
     notesPanel.append(notesTitle, noteText);
@@ -1954,13 +1974,7 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 
   if (event.target.closest(".parent-note-remove")) {
-    const items = parentNotesList.querySelectorAll(".parent-note-item");
-    if (items.length === 1) {
-      item.querySelector("textarea").value = "";
-      setParentNoteEditState(item, false);
-    } else {
-      item.remove();
-    }
+    item.remove();
     formIsDirty = true;
     formChangeVersion += 1;
     updateParentNoteItems();
@@ -1971,7 +1985,7 @@ parentNotesList.addEventListener("click", async (event) => {
 
   if (event.target.closest(".parent-note-save")) {
     const textArea = item.querySelector("textarea");
-    if (!textArea.value.trim() && parentNotesList.children.length > 1) item.remove();
+    if (!textArea.value.trim()) item.remove();
     else setParentNoteEditState(item, false);
     updateParentNoteItems();
     const saved = await persistCurrentForm({ manual: true });
@@ -1982,13 +1996,16 @@ blocksContainer.addEventListener("click", async (event) => {
   const reactionButton = event.target.closest(".reaction-btn");
   if (reactionButton) {
     const block = reactionButton.closest(".day-block");
-    if (!block) return;
-    const reaction = block.dataset.reaction === reactionButton.dataset.reaction
-      ? ""
-      : reactionButton.dataset.reaction;
-    setBlockReaction(block, reaction);
-    scheduleAutoSave();
-    setStatus(reaction ? `Reaction updated: ${reaction} — saving…` : "Reaction removed — saving…");
+    if (!block || !currentUser?.username) return;
+    const likedBy = new Set(Array.isArray(block.commentLikedBy) ? block.commentLikedBy : []);
+    const wasLiked = likedBy.has(currentUser.username);
+    if (wasLiked) likedBy.delete(currentUser.username);
+    else likedBy.add(currentUser.username);
+    setBlockLikes(block, [...likedBy]);
+    formIsDirty = true;
+    formChangeVersion += 1;
+    const saved = await persistCurrentForm({ manual: true });
+    if (saved) setStatus(wasLiked ? "✓ Like removed" : `✓ Comment liked by ${currentUser.username}`);
     return;
   }
 

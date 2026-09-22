@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=38" />
+    <link rel="stylesheet" href="styles.css?v=40" />
   </head>
   <body class="is-authenticating">
     <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -225,7 +225,10 @@
         </label>
 
         <div class="comment-reactions" aria-label="Parent reaction to this comment">
-          <span class="reaction-label">Was this update helpful?</span>
+          <span class="reaction-copy">
+            <span class="reaction-label">Was this update helpful?</span>
+            <span class="comment-liked-by" hidden></span>
+          </span>
           <div class="reaction-actions">
             <button type="button" class="reaction-btn" data-reaction="like" aria-pressed="false" aria-label="Like this comment">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.5Zm2 10V10l3.9-6.1c.6-.9 2-.5 2 .6v4h4.1a2.5 2.5 0 0 1 2.4 3.2l-2.1 7a2.5 2.5 0 0 1-2.4 1.8H9.5Z"/></svg>
@@ -320,6 +323,6 @@
       </form>
     </dialog>
 
-    <script src="app.js?v=38"></script>
+    <script src="app.js?v=40"></script>
   </body>
 </html>
