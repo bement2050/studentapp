@@ -1069,10 +1069,50 @@ function setBlockReaction(block, reaction = "") {
   });
 }
 
+function createParentNoteId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `parent-note-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeParentNote(note) {
+  if (typeof note === "string") {
+    return { id: createParentNoteId(), text: note, likedBy: [] };
+  }
+
+  const likedBy = Array.isArray(note?.likedBy)
+    ? [...new Set(note.likedBy.map((username) => String(username).trim()).filter(Boolean))]
+    : [];
+  return {
+    id: note?.id || createParentNoteId(),
+    text: String(note?.text || ""),
+    likedBy
+  };
+}
+
 function parentNoteValues() {
-  return [...parentNotesList.querySelectorAll(".parent-note-item textarea")]
-    .map((textArea) => textArea.value.trim())
-    .filter(Boolean);
+  return [...parentNotesList.querySelectorAll(".parent-note-item")]
+    .map((item) => ({
+      id: item.dataset.noteId || createParentNoteId(),
+      text: item.querySelector("textarea").value.trim(),
+      likedBy: Array.isArray(item.likedBy) ? item.likedBy : []
+    }))
+    .filter((note) => note.text);
+}
+
+function updateParentNoteLikeState(item) {
+  const button = item.querySelector(".parent-note-like");
+  const buttonText = button.querySelector("span");
+  const likedByText = item.querySelector(".parent-note-liked-by");
+  const likedBy = Array.isArray(item.likedBy) ? item.likedBy : [];
+  const username = currentUser?.username || "";
+  const isLikedByCurrentUser = likedBy.includes(username);
+
+  button.classList.toggle("is-selected", isLikedByCurrentUser);
+  button.setAttribute("aria-pressed", String(isLikedByCurrentUser));
+  button.setAttribute("aria-label", isLikedByCurrentUser ? "Remove your like from this parent note" : "Like this parent note");
+  buttonText.textContent = isLikedByCurrentUser ? "Unlike" : "Like";
+  likedByText.textContent = likedBy.length ? `Liked by ${likedBy.join(", ")}` : "";
+  likedByText.hidden = likedBy.length === 0;
 }
 
 function updateParentNoteItems() {
@@ -1083,6 +1123,8 @@ function updateParentNoteItems() {
     const count = item.querySelector(".parent-note-count");
     title.textContent = `Parent note ${index + 1}`;
     count.textContent = `${textArea.value.length} / 1000`;
+    item.classList.toggle("is-empty", !textArea.value.trim());
+    updateParentNoteLikeState(item);
   });
 }
 
@@ -1104,6 +1146,7 @@ function setParentNoteEditState(item, isEditing) {
 }
 
 function createParentNoteItem(note = "", { editing = false } = {}) {
+  const record = normalizeParentNote(note);
   const item = document.createElement("article");
   item.className = "parent-note-item";
   item.innerHTML = `
@@ -1119,9 +1162,18 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
       <span class="sr-only">Parent note</span>
       <textarea rows="3" maxlength="1000" placeholder="Write a note about today..."></textarea>
     </label>
-    <span class="parent-note-count">0 / 1000</span>`;
+    <span class="parent-note-count">0 / 1000</span>
+    <div class="parent-note-social">
+      <button type="button" class="parent-note-like" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3.5Zm2 10V10l3.9-6.1c.6-.9 2-.5 2 .6v4h4.1a2.5 2.5 0 0 1 2.4 3.2l-2.1 7a2.5 2.5 0 0 1-2.4 1.8H9.5Z"/></svg>
+        <span>Like</span>
+      </button>
+      <span class="parent-note-liked-by" hidden></span>
+    </div>`;
   const textArea = item.querySelector("textarea");
-  textArea.value = note;
+  item.dataset.noteId = record.id;
+  item.likedBy = record.likedBy;
+  textArea.value = record.text;
   parentNotesList.appendChild(item);
   updateParentNoteItems();
   setParentNoteEditState(item, editing);
@@ -1130,7 +1182,9 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
 
 function renderParentNotes(notes = []) {
   parentNotesList.innerHTML = "";
-  const validNotes = Array.isArray(notes) ? notes.filter((note) => typeof note === "string") : [];
+  const validNotes = Array.isArray(notes)
+    ? notes.filter((note) => typeof note === "string" || (note && typeof note === "object"))
+    : [];
   (validNotes.length ? validNotes : [""]).forEach((note) => createParentNoteItem(note));
 }
 
@@ -1703,7 +1757,10 @@ function preparePrintLayout() {
   paperStaffInitials.textContent = entry.staffInitials || DEFAULT_STAFF_INITIALS;
   const printParentNotes = entry.blocks?.[0]?.parentNotes || [];
   paperParentNote.textContent = printParentNotes.length
-    ? printParentNotes.map((note, index) => `${index + 1}. ${note}`).join("\n")
+    ? printParentNotes.map((note, index) => {
+      const likedBy = note.likedBy?.length ? ` (Liked by ${note.likedBy.join(", ")})` : "";
+      return `${index + 1}. ${note.text}${likedBy}`;
+    }).join("\n")
     : "No parent note added.";
   paperRows.innerHTML = "";
 
@@ -1874,6 +1931,21 @@ document.querySelector(".app-shell").addEventListener("change", (event) => {
 parentNotesList.addEventListener("click", async (event) => {
   const item = event.target.closest(".parent-note-item");
   if (!item) return;
+
+  if (event.target.closest(".parent-note-like")) {
+    if (!currentUser?.username) return;
+    const likedBy = new Set(Array.isArray(item.likedBy) ? item.likedBy : []);
+    const wasLiked = likedBy.has(currentUser.username);
+    if (wasLiked) likedBy.delete(currentUser.username);
+    else likedBy.add(currentUser.username);
+    item.likedBy = [...likedBy];
+    updateParentNoteLikeState(item);
+    formIsDirty = true;
+    formChangeVersion += 1;
+    const saved = await persistCurrentForm({ manual: true });
+    if (saved) setStatus(wasLiked ? "✓ Like removed" : `✓ Liked by ${currentUser.username}`);
+    return;
+  }
 
   if (event.target.closest(".parent-note-edit")) {
     setParentNoteEditState(item, true);
