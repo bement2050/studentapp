@@ -2062,6 +2062,269 @@ h1 {
   }
 }
 
+/* Compact screen density: preserve the print layout while reducing scrolling. */
+@media screen {
+  html {
+    font-size: 14px;
+  }
+
+  .login-screen {
+    padding: .5rem;
+  }
+
+  .login-card {
+    width: min(360px, 100%);
+    gap: .6rem;
+    padding: 1.1rem;
+    border-radius: 18px;
+  }
+
+  .login-mark {
+    font-size: 1.8rem;
+  }
+
+  input[type="password"],
+  select {
+    min-height: 40px;
+    padding: .5rem .65rem;
+  }
+
+  .app-shell {
+    width: min(1280px, 96vw);
+    margin: .35rem auto .8rem;
+    gap: .35rem;
+  }
+
+  .hero {
+    gap: .65rem;
+    padding: .5rem .7rem;
+  }
+
+  .brand-mark {
+    flex-basis: 42px;
+    height: 42px;
+    border-radius: 13px;
+    font-size: 1.4rem;
+  }
+
+  h1 {
+    font-size: clamp(1.55rem, 3vw, 2.2rem);
+  }
+
+  .hero-date-picker input,
+  .hero-actions .btn {
+    min-height: 36px;
+    padding: .35rem .55rem;
+  }
+
+  .panel {
+    padding: .55rem;
+    border-radius: 15px;
+  }
+
+  .parent-note-card {
+    gap: .45rem;
+    padding: .65rem .75rem;
+  }
+
+  .parent-note-heading h2 {
+    font-size: 1rem;
+  }
+
+  .parent-note-heading p {
+    font-size: .72rem;
+  }
+
+  .parent-note-icon {
+    width: 2.1rem;
+    height: 2.1rem;
+    font-size: 1rem;
+  }
+
+  .parent-notes-list {
+    gap: .45rem;
+  }
+
+  .parent-note-item {
+    gap: .35rem;
+    padding: .55rem;
+  }
+
+  .parent-note-field textarea {
+    min-height: 4.5rem;
+  }
+
+  .blocks {
+    gap: .45rem;
+  }
+
+  .day-block {
+    gap: .4rem;
+    padding: .6rem;
+  }
+
+  .block-head h3 {
+    font-size: 1rem;
+  }
+
+  .badge {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  fieldset {
+    gap: .3rem .4rem;
+  }
+
+  legend {
+    margin-bottom: .25rem;
+  }
+
+  fieldset label span {
+    padding: .32rem .52rem;
+  }
+
+  .emotion-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .notes-wrap textarea {
+    min-height: 4.75rem;
+  }
+
+  .photo-section {
+    gap: .35rem;
+  }
+
+  .photo-add {
+    min-height: 36px;
+    padding: .35rem .55rem;
+  }
+
+  .support-row {
+    gap: .65rem;
+    font-size: .8rem;
+  }
+
+  .date-navigator {
+    gap: .35rem;
+    padding: .35rem;
+  }
+
+  .date-nav-btn {
+    min-height: 36px;
+    padding: .35rem .55rem;
+  }
+}
+
+@media screen and (max-width: 780px) {
+  html {
+    font-size: 13px;
+  }
+
+  .app-shell {
+    width: calc(100% - .3rem);
+    margin-top: .15rem;
+    margin-bottom: .65rem;
+    gap: .35rem;
+  }
+
+  .hero {
+    gap: .3rem .45rem;
+    padding: .45rem .55rem;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  .hero-actions {
+    gap: .25rem;
+  }
+
+  .hero-actions .btn,
+  .hero-date-picker input {
+    min-height: 34px;
+    height: 34px;
+  }
+
+  .panel,
+  .meta-panel,
+  .parent-note-card {
+    padding: .48rem;
+  }
+
+  .meta-panel {
+    gap: .3rem;
+  }
+
+  .meta-panel input {
+    min-height: 36px;
+    height: 36px;
+  }
+
+  .parent-note-card,
+  .parent-notes-list,
+  .parent-note-item {
+    gap: .3rem;
+  }
+
+  .parent-note-heading p,
+  .parent-note-footer > span {
+    display: none;
+  }
+
+  .parent-note-item-actions,
+  .notes-actions {
+    flex-wrap: wrap;
+  }
+
+  .section-heading h2,
+  .parent-note-heading h2,
+  .block-head h3 {
+    font-size: 1rem;
+  }
+
+  .blocks {
+    gap: .4rem;
+  }
+
+  .day-block {
+    gap: .35rem;
+    padding: .48rem;
+  }
+
+  fieldset {
+    gap: .22rem .28rem;
+  }
+
+  fieldset label span {
+    min-height: 34px;
+    padding: .24rem .4rem;
+    font-size: .72rem;
+  }
+
+  .notes-wrap textarea {
+    min-height: 68px;
+    padding: .38rem .48rem;
+  }
+
+  .photo-add,
+  .date-nav-btn {
+    min-height: 34px;
+  }
+
+  .mobile-save-bar {
+    gap: .6rem;
+    padding: .45rem max(.65rem, env(safe-area-inset-right)) calc(.45rem + env(safe-area-inset-bottom)) max(.65rem, env(safe-area-inset-left));
+  }
+
+  .mobile-save-bar .btn {
+    min-height: 38px;
+  }
+}
+
 @media (max-width: 520px) {
   .app-shell {
     width: calc(100% - .3rem);
