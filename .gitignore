@@ -3,5 +3,9 @@ print-sample*.pdf
 .chrome-*
 .edge-*
 test-results/
+node_modules/
 Thumbs.db
 .DS_Store
+*.service-account.json
+gcp-service-account*.json
+evocative-lodge-442118-j6-7337d7c9908b.json

@@ -1,0 +1,16 @@
+{
+  "name": "todays-journal-speech-function",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^5.0.5",
+    "@google-cloud/speech": "^8.1.0"
+  },
+  "scripts": {
+    "start": "functions-framework --target=transcribeAudio"
+  }
+}

@@ -50,7 +50,8 @@ const APP_CONFIG = {
   projectId: "sam-about-my-day",
   supabaseUrl: "https://voanpatamwilfdwppleu.supabase.co",
   supabaseAnonKey: "sb_publishable_uDAkRERB3dCTfhh-_hl6sQ_Btddu68C",
-  photoBucket: "journal-photos"
+  photoBucket: "journal-photos",
+  speechToTextUrl: "https://us-central1-evocative-lodge-442118-j6.cloudfunctions.net/transcribeAudio"
 };
 
 const childNameInput = document.getElementById("childName");
@@ -111,6 +112,7 @@ let formIsDirty = false;
 let formChangeVersion = 0;
 let saveInProgress = null;
 let activeDate = todayISO();
+let activeDictation = null;
 const previewUrls = new Set();
 
 function findUser(username) {
@@ -1033,6 +1035,160 @@ function autoResizeNote(textArea) {
   textArea.style.height = `${textArea.scrollHeight}px`;
 }
 
+function encodePcmWav(chunks, sampleRate) {
+  const sampleCount = chunks.reduce((total, chunk) => total + chunk.length, 0);
+  const buffer = new ArrayBuffer(44 + (sampleCount * 2));
+  const view = new DataView(buffer);
+  const writeText = (offset, value) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+
+  writeText(0, "RIFF");
+  view.setUint32(4, 36 + (sampleCount * 2), true);
+  writeText(8, "WAVE");
+  writeText(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeText(36, "data");
+  view.setUint32(40, sampleCount * 2, true);
+
+  let offset = 44;
+  chunks.forEach((chunk) => {
+    for (let index = 0; index < chunk.length; index += 1) {
+      const sample = Math.max(-1, Math.min(1, chunk[index]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += 2;
+    }
+  });
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+function setDictationButtonState(button, state) {
+  const label = button.querySelector(".speech-to-text-label");
+  button.classList.toggle("is-recording", state === "recording");
+  button.disabled = state === "working";
+  button.setAttribute("aria-label", state === "recording" ? "Stop voice typing" : "Start voice typing");
+  button.title = state === "recording" ? "Stop and convert speech to text" : "Start voice typing";
+  if (label) label.textContent = state === "recording" ? "Stop" : state === "working" ? "Working..." : "Voice";
+}
+
+function resetDictationButtons() {
+  document.querySelectorAll(".speech-to-text-btn").forEach((button) => {
+    button.disabled = false;
+    if (!button.classList.contains("is-recording")) setDictationButtonState(button, "idle");
+  });
+}
+
+async function transcribeRecording(recording) {
+  const { button, chunks, sampleRate, status, textArea } = recording;
+  setDictationButtonState(button, "working");
+  status.textContent = "Converting speech to text...";
+  const audio = encodePcmWav(chunks, sampleRate);
+  if (audio.size <= 44) throw new Error("No speech was recorded. Please try again.");
+
+  const response = await fetch(APP_CONFIG.speechToTextUrl, {
+    method: "POST",
+    headers: { "Content-Type": "audio/wav" },
+    body: audio
+  });
+  let result = {};
+  try {
+    result = await response.json();
+  } catch {
+    // The response below provides a useful generic message when the endpoint is unavailable.
+  }
+  if (!response.ok) throw new Error(result.error || "Voice typing is unavailable right now.");
+  const transcript = String(result.transcript || "").trim();
+  if (!transcript) throw new Error("I could not hear any words. Please try again.");
+
+  textArea.value = [textArea.value.trim(), transcript].filter(Boolean).join(" ");
+  textArea.dispatchEvent(new Event("input", { bubbles: true }));
+  autoResizeNote(textArea);
+  status.textContent = "Voice typing added. Review the text, then tap Save.";
+  textArea.focus();
+}
+
+async function stopDictation() {
+  const recording = activeDictation;
+  if (!recording || recording.stopping) return;
+  recording.stopping = true;
+  clearTimeout(recording.timer);
+  activeDictation = null;
+  recording.processor.disconnect();
+  recording.source.disconnect();
+  recording.silentGain.disconnect();
+  recording.stream.getTracks().forEach((track) => track.stop());
+  await recording.audioContext.close();
+
+  try {
+    await transcribeRecording(recording);
+  } catch (error) {
+    recording.status.textContent = error.message;
+    setStatus(error.message);
+  } finally {
+    setDictationButtonState(recording.button, "idle");
+    resetDictationButtons();
+  }
+}
+
+async function toggleDictation(button, container) {
+  if (activeDictation?.button === button) {
+    await stopDictation();
+    return;
+  }
+  if (activeDictation) {
+    activeDictation.status.textContent = "Finish the current voice note first.";
+    return;
+  }
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!navigator.mediaDevices?.getUserMedia || !AudioContextClass) {
+    const status = container.querySelector(".speech-to-text-status");
+    status.textContent = "Voice typing needs a current browser and a secure HTTPS connection.";
+    return;
+  }
+
+  const textArea = container.querySelector("textarea");
+  const status = container.querySelector(".speech-to-text-status");
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+    });
+    const audioContext = new AudioContextClass();
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    const silentGain = audioContext.createGain();
+    const chunks = [];
+    silentGain.gain.value = 0;
+    processor.onaudioprocess = (event) => {
+      chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+    };
+    source.connect(processor);
+    processor.connect(silentGain);
+    silentGain.connect(audioContext.destination);
+
+    document.querySelectorAll(".speech-to-text-btn").forEach((item) => { item.disabled = item !== button; });
+    setDictationButtonState(button, "recording");
+    status.textContent = "Listening... tap Stop when you are finished.";
+    activeDictation = {
+      button, chunks, sampleRate: audioContext.sampleRate, status, textArea,
+      stream, audioContext, source, processor, silentGain, stopping: false,
+      timer: setTimeout(stopDictation, 55000)
+    };
+  } catch (error) {
+    resetDictationButtons();
+    status.textContent = error.name === "NotAllowedError"
+      ? "Microphone access was blocked. Allow it in your browser settings and try again."
+      : "The microphone could not be started. Please try again.";
+  }
+}
+
 function setNoteEditState(block, isEditing) {
   const textArea = block.querySelector("textarea");
   const editButton = block.querySelector(".note-edit-btn");
@@ -1168,6 +1324,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
     <div class="parent-note-item-header">
       <strong class="parent-note-item-title"></strong>
       <div class="parent-note-item-actions">
+        <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice</span></button>
         <button type="button" class="parent-note-remove" aria-label="Remove parent note">Remove</button>
         <button type="button" class="parent-note-edit">Edit</button>
         <button type="button" class="parent-note-save">Save</button>
@@ -1177,6 +1334,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
       <span class="sr-only">Parent note</span>
       <textarea rows="3" maxlength="1000" placeholder="Write a note about today..."></textarea>
     </label>
+    <span class="speech-to-text-status" aria-live="polite"></span>
     <span class="parent-note-count">0 / 1000</span>
     <div class="parent-note-social">
       <button type="button" class="parent-note-like" aria-pressed="false">
@@ -1952,6 +2110,13 @@ parentNotesList.addEventListener("click", async (event) => {
   const item = event.target.closest(".parent-note-item");
   if (!item) return;
 
+  const dictationButton = event.target.closest(".speech-to-text-btn");
+  if (dictationButton) {
+    setParentNoteEditState(item, true);
+    await toggleDictation(dictationButton, item);
+    return;
+  }
+
   if (event.target.closest(".parent-note-like")) {
     if (!currentUser?.username) return;
     const likedBy = new Set(Array.isArray(item.likedBy) ? item.likedBy : []);
@@ -1993,6 +2158,16 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 });
 blocksContainer.addEventListener("click", async (event) => {
+  const dictationButton = event.target.closest(".speech-to-text-btn");
+  if (dictationButton) {
+    const block = dictationButton.closest(".day-block");
+    if (block) {
+      setNoteEditState(block, true);
+      await toggleDictation(dictationButton, block);
+    }
+    return;
+  }
+
   const reactionButton = event.target.closest(".reaction-btn");
   if (reactionButton) {
     const block = reactionButton.closest(".day-block");
@@ -2053,6 +2228,7 @@ window.addEventListener("keydown", (event) => {
 });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
+    if (activeDictation) stopDictation();
     persistCurrentForm();
     endAccessSession();
   } else if (currentUser) {

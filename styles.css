@@ -832,7 +832,8 @@ fieldset label input:checked + span {
 }
 
 .note-edit-btn,
-.note-save-btn {
+.note-save-btn,
+.speech-to-text-btn {
   min-height: 32px;
   padding: .22rem .6rem;
   border: 1px solid #adc4ba;
@@ -842,6 +843,37 @@ fieldset label input:checked + span {
   font-size: .73rem;
   font-weight: 800;
   cursor: pointer;
+}
+
+.speech-to-text-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  border-color: #b9a6d8;
+  color: #5d3d86;
+}
+
+.speech-to-text-btn.is-recording {
+  border-color: #b93737;
+  background: #fff0f0;
+  color: #a12424;
+  box-shadow: 0 0 0 3px rgba(185, 55, 55, .12);
+}
+
+.speech-to-text-btn:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.speech-to-text-status {
+  min-height: 1em;
+  color: #5d3d86;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.speech-to-text-status:empty {
+  display: none;
 }
 
 .note-save-btn {

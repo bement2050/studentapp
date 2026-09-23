@@ -21,6 +21,7 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Familiar low-ink paper-style print view with thin lines, clear spacing, and attached photos
 - Small Print action at the top on phone and desktop
 - Automatic localized date/time with the device's global IANA timezone
+- Google Cloud voice typing for daily notes and parent notes
 
 ## Run Locally
 
@@ -92,3 +93,23 @@ available only from an admin or superuser account.
 
 The public/publishable browser key is used by the web app. Never place a secret or
 service-role key in this repository.
+
+## Google Cloud Speech-to-Text Setup
+
+The microphone buttons send short recordings to the server-side function in
+`speech-function/`. The Google service-account JSON must stay outside this repository;
+never copy it into `app.js` or commit it to GitHub.
+
+Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install), then deploy
+from this folder in PowerShell:
+
+```powershell
+gcloud auth activate-service-account --key-file="C:\Users\alemayehub3\Downloads\evocative-lodge-442118-j6-7337d7c9908b.json"
+gcloud config set project evocative-lodge-442118-j6
+gcloud services enable speech.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com
+gcloud functions deploy transcribeAudio --gen2 --runtime=nodejs20 --region=us-central1 --source=speech-function --entry-point=transcribeAudio --trigger-http --allow-unauthenticated --memory=256MiB --timeout=70s --max-instances=2
+```
+
+The browser endpoint is configured as `APP_CONFIG.speechToTextUrl` in `app.js`. If the
+deploy command returns a different URL, replace that setting. Microphone access works on
+HTTPS (including GitHub Pages) or localhost and requires the user to grant permission.

@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=40" />
+    <link rel="stylesheet" href="styles.css?v=41" />
   </head>
   <body class="is-authenticating">
     <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -216,11 +216,16 @@
           <span class="notes-header">
             <span>Notes</span>
             <span class="notes-actions">
+              <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing">
+                <span aria-hidden="true">&#127908;</span>
+                <span class="speech-to-text-label">Voice</span>
+              </button>
               <button type="button" class="note-edit-btn" aria-label="Edit notes">Edit</button>
               <button type="button" class="note-save-btn" aria-label="Save notes" disabled>Save</button>
             </span>
           </span>
           <textarea rows="4" placeholder="What happened during this part of the day?" readonly></textarea>
+          <span class="speech-to-text-status" aria-live="polite"></span>
           <span class="character-count">0 characters</span>
         </label>
 
@@ -323,6 +328,6 @@
       </form>
     </dialog>
 
-    <script src="app.js?v=40"></script>
+    <script src="app.js?v=41"></script>
   </body>
 </html>
