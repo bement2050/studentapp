@@ -1076,7 +1076,7 @@ function setDictationButtonState(button, state) {
   button.disabled = state === "working";
   button.setAttribute("aria-label", state === "recording" ? "Stop voice typing" : "Start voice typing");
   button.title = state === "recording" ? "Stop and convert speech to text" : "Start voice typing";
-  if (label) label.textContent = state === "recording" ? "Stop" : state === "working" ? "Working..." : "Voice";
+  if (label) label.textContent = state === "recording" ? "Stop" : state === "working" ? "Working..." : "Voice to text";
 }
 
 function resetDictationButtons() {
@@ -1324,7 +1324,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
     <div class="parent-note-item-header">
       <strong class="parent-note-item-title"></strong>
       <div class="parent-note-item-actions">
-        <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice</span></button>
+        <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
         <button type="button" class="parent-note-remove" aria-label="Remove parent note">Remove</button>
         <button type="button" class="parent-note-edit">Edit</button>
         <button type="button" class="parent-note-save">Save</button>
