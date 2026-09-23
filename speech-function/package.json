@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.js",
   "engines": {
-    "node": "20"
+    "node": "24"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^5.0.5",

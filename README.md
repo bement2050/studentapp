@@ -107,7 +107,7 @@ from this folder in PowerShell:
 gcloud auth login
 gcloud config set project evocative-lodge-442118-j6
 gcloud services enable speech.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com
-gcloud functions deploy transcribeAudio --gen2 --runtime=nodejs20 --region=us-central1 --source=speech-function --entry-point=transcribeAudio --trigger-http --allow-unauthenticated --service-account=speech-to-text-sa@evocative-lodge-442118-j6.iam.gserviceaccount.com --memory=256MiB --timeout=70s --max-instances=2
+gcloud functions deploy transcribeAudio --gen2 --runtime=nodejs24 --region=us-central1 --source=speech-function --entry-point=transcribeAudio --trigger-http --allow-unauthenticated --service-account=speech-to-text-sa@evocative-lodge-442118-j6.iam.gserviceaccount.com --memory=256MiB --timeout=70s --max-instances=2
 ```
 
 The Google account used with `gcloud auth login` must be an owner or otherwise have
