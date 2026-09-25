@@ -791,6 +791,68 @@ fieldset label span {
   gap: .3rem;
 }
 
+.mood-row input[value="happy"] + span {
+  --emotion-bg: #e4f4e8;
+  --emotion-selected-bg: #c5e8cf;
+  --emotion-border: #8fcaa1;
+  --emotion-ink: #185a32;
+}
+
+.mood-row input[value="calm"] + span {
+  --emotion-bg: #e2f3ed;
+  --emotion-selected-bg: #c0e4d7;
+  --emotion-border: #86c5ae;
+  --emotion-ink: #175846;
+}
+
+.mood-row input[value="sad"] + span {
+  --emotion-bg: #e5f1fb;
+  --emotion-selected-bg: #c5e0f5;
+  --emotion-border: #8ebcde;
+  --emotion-ink: #174f78;
+}
+
+.mood-row input[value="mad"] + span {
+  --emotion-bg: #ffead0;
+  --emotion-selected-bg: #ffd39d;
+  --emotion-border: #dda052;
+  --emotion-ink: #75430b;
+}
+
+.mood-row input[value="worried"] + span {
+  --emotion-bg: #fff2cc;
+  --emotion-selected-bg: #ffe39a;
+  --emotion-border: #d8ad47;
+  --emotion-ink: #674908;
+}
+
+.mood-row input[value="silly"] + span {
+  --emotion-bg: #f2e9fa;
+  --emotion-selected-bg: #dfc9f2;
+  --emotion-border: #b898d2;
+  --emotion-ink: #583476;
+}
+
+.mood-row input[value="excited"] + span {
+  --emotion-bg: #fff6bd;
+  --emotion-selected-bg: #ffe879;
+  --emotion-border: #d5b83f;
+  --emotion-ink: #624e00;
+}
+
+.mood-row input[value="tired"] + span {
+  --emotion-bg: #edf0f4;
+  --emotion-selected-bg: #d5dce5;
+  --emotion-border: #aab5c3;
+  --emotion-ink: #3e4d60;
+}
+
+.mood-row label input + span {
+  border-color: var(--emotion-border);
+  background: var(--emotion-bg);
+  color: var(--emotion-ink);
+}
+
 .emotion-icon {
   display: block;
   flex: 0 0 auto;
@@ -805,14 +867,28 @@ fieldset label input:checked + span {
   box-shadow: inset 0 0 0 1px var(--green);
 }
 
+.mood-row label input:checked + span {
+  border-color: var(--emotion-border);
+  background: var(--emotion-selected-bg);
+  color: var(--emotion-ink);
+  box-shadow: inset 0 0 0 1px var(--emotion-ink);
+  font-weight: 800;
+}
+
+.mood-row label input:focus-visible + span {
+  outline: 3px solid var(--emotion-ink);
+  outline-offset: 2px;
+}
+
 .day-block.is-mood-locked .mood-row label input:disabled + span {
   cursor: not-allowed;
   opacity: .72;
-  background: #f7f9f8;
+  background: var(--emotion-bg);
 }
 
 .day-block.is-mood-locked .mood-row label input:disabled:checked + span {
   opacity: 1;
+  background: var(--emotion-selected-bg);
 }
 
 .notes-wrap {
