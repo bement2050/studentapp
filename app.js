@@ -1208,19 +1208,6 @@ function setNoteEditState(block, isEditing) {
   }
 }
 
-function setMoodLockState(block, isLocked) {
-  const moodFieldset = block.querySelector(".mood-row");
-  const moodButton = block.querySelector(".mood-lock-btn");
-  if (!moodFieldset || !moodButton) return;
-
-  moodFieldset.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-    input.disabled = isLocked;
-  });
-  block.classList.toggle("is-mood-locked", isLocked);
-  moodButton.textContent = isLocked ? "Edit" : "Save";
-  moodButton.setAttribute("aria-label", isLocked ? "Edit emotions" : "Save emotions");
-}
-
 function setBlockLikes(block, likedBy = []) {
   const normalizedLikes = Array.isArray(likedBy)
     ? [...new Set(likedBy.map((username) => String(username).trim()).filter(Boolean))]
@@ -1391,7 +1378,6 @@ function createBlocks() {
       input.closest("label").setAttribute("for", input.id);
     });
 
-    setMoodLockState(article, true);
     setBlockLikes(article);
 
     article.dataset.blockIndex = String(index);
@@ -1467,7 +1453,6 @@ function writeForm(entry) {
     noteField.value = block.notes || "";
     setBlockLikes(element, block.commentLikedBy || []);
     setNoteEditState(element, false);
-    setMoodLockState(element, true);
     element.querySelector(".speech").checked = Boolean(block.speech);
     element.querySelector(".ot").checked = Boolean(block.ot);
   });
@@ -1504,7 +1489,6 @@ function clearForm(keepHeader = false) {
     const block = textArea.closest(".day-block");
     if (block) {
       setNoteEditState(block, false);
-      setMoodLockState(block, true);
     }
   });
 
@@ -2181,21 +2165,6 @@ blocksContainer.addEventListener("click", async (event) => {
     formChangeVersion += 1;
     const saved = await persistCurrentForm({ manual: true });
     if (saved) setStatus(wasLiked ? "✓ Like removed" : `✓ Comment liked by ${currentUser.username}`);
-    return;
-  }
-
-  const moodButton = event.target.closest(".mood-lock-btn");
-  if (moodButton) {
-    const block = moodButton.closest(".day-block");
-    if (!block) return;
-    const isLocked = block.classList.contains("is-mood-locked");
-    setMoodLockState(block, !isLocked);
-    if (isLocked) {
-      setStatus("Emotions ready to edit");
-    } else {
-      const saved = await persistCurrentForm({ manual: true });
-      if (saved) setStatus("✓ Emotions saved");
-    }
     return;
   }
 
