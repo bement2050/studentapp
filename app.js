@@ -1031,7 +1031,7 @@ async function deleteEntry(entryId) {
 
 function autoResizeNote(textArea) {
   if (!textArea) return;
-  textArea.style.height = "auto";
+  textArea.style.height = "0px";
   textArea.style.height = `${textArea.scrollHeight}px`;
 }
 

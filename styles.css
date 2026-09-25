@@ -540,10 +540,20 @@ button:focus-visible {
 }
 
 .parent-note-item:not(.is-editing) .parent-note-field textarea {
-  border-style: dashed;
-  background: #f7f9fb;
+  min-height: 0;
+  padding: .15rem 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #39514b;
   resize: none;
+}
+
+.parent-note-item:not(.is-editing) .parent-note-count,
+.parent-note-edit:disabled,
+.parent-note-save:disabled {
+  display: none;
 }
 
 .parent-note-field textarea:focus {
@@ -584,12 +594,6 @@ button:focus-visible {
 .parent-note-add:hover {
   background: #285d9e;
   color: #fff;
-}
-
-.parent-note-edit:disabled,
-.parent-note-save:disabled {
-  opacity: .42;
-  cursor: default;
 }
 
 .parent-note-count {
@@ -2430,6 +2434,11 @@ h1 {
   .parent-note-field textarea {
     min-height: 54px;
     padding: .4rem .5rem;
+  }
+
+  .parent-note-item:not(.is-editing) .parent-note-field textarea {
+    min-height: 0;
+    padding: .12rem 0;
   }
 
   .parent-note-social {
