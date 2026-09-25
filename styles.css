@@ -473,19 +473,17 @@ button:focus-visible {
 
 .parent-note-card {
   display: grid;
-  gap: .8rem;
-  padding: 1rem 1.1rem;
-  border-color: #c7d9ef;
-  background: linear-gradient(135deg, #fff 0%, #f4f8ff 100%);
-  box-shadow: 0 14px 38px rgba(24, 76, 138, .08);
+  gap: .5rem;
+  padding: .75rem .8rem;
+  border-color: var(--line);
+  background: var(--panel);
 }
 
-.parent-note-heading,
-.parent-note-footer {
+.parent-note-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: .75rem;
 }
 
 .parent-note-heading h2,
@@ -494,48 +492,27 @@ button:focus-visible {
 }
 
 .parent-note-heading h2 {
-  font-size: 1.2rem;
+  font-size: 1rem;
 }
 
 .parent-note-heading p {
-  margin-top: .15rem;
+  margin-top: .05rem;
   color: var(--muted);
-  font-size: .82rem;
-}
-
-.parent-note-kicker {
-  display: block;
-  margin-bottom: .15rem;
-  color: #326bb0;
-  font-size: .68rem;
-  font-weight: 900;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-}
-
-.parent-note-icon {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 2.7rem;
-  height: 2.7rem;
-  border-radius: 50%;
-  background: #e5effc;
-  font-size: 1.3rem;
+  font-size: .72rem;
 }
 
 .parent-notes-list {
   display: grid;
-  gap: .7rem;
+  gap: .45rem;
 }
 
 .parent-note-item {
   display: grid;
-  gap: .45rem;
-  padding: .75rem;
-  border: 1px solid #cbdced;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, .72);
+  gap: .3rem;
+  padding: .55rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
 }
 
 .parent-note-item-header,
@@ -555,11 +532,11 @@ button:focus-visible {
 }
 
 .parent-note-field textarea {
-  min-height: 5.5rem;
-  border-color: #aec8e7;
-  background: rgba(255, 255, 255, .9);
-  line-height: 1.4;
-  resize: vertical;
+  min-height: 4rem;
+  padding: .5rem .6rem;
+  border-color: #bdcbc4;
+  line-height: 1.35;
+  resize: none;
 }
 
 .parent-note-item:not(.is-editing) .parent-note-field textarea {
@@ -572,12 +549,6 @@ button:focus-visible {
 .parent-note-field textarea:focus {
   border-color: #3977c3;
   outline: 3px solid rgba(57, 119, 195, .13);
-}
-
-.parent-note-footer {
-  color: var(--muted);
-  font-size: .72rem;
-  font-weight: 700;
 }
 
 .parent-note-edit,
@@ -2178,8 +2149,8 @@ h1 {
   }
 
   .parent-note-card {
-    gap: .45rem;
-    padding: .65rem .75rem;
+    gap: .4rem;
+    padding: .55rem .6rem;
   }
 
   .parent-note-heading h2 {
@@ -2188,12 +2159,6 @@ h1 {
 
   .parent-note-heading p {
     font-size: .72rem;
-  }
-
-  .parent-note-icon {
-    width: 2.1rem;
-    height: 2.1rem;
-    font-size: 1rem;
   }
 
   .parent-notes-list {
@@ -2206,7 +2171,7 @@ h1 {
   }
 
   .parent-note-field textarea {
-    min-height: 4.5rem;
+    min-height: 3.75rem;
   }
 
   .blocks {
@@ -2325,8 +2290,7 @@ h1 {
     gap: .3rem;
   }
 
-  .parent-note-heading p,
-  .parent-note-footer > span {
+  .parent-note-heading p {
     display: none;
   }
 
@@ -2432,17 +2396,7 @@ h1 {
     font-size: 1rem;
   }
 
-  .parent-note-kicker {
-    margin-bottom: .05rem;
-    font-size: .58rem;
-  }
-
-  .parent-note-icon {
-    display: none;
-  }
-
   .parent-note-heading p,
-  .parent-note-footer > span,
   .character-count,
   .parent-note-count {
     display: none;
@@ -2474,7 +2428,7 @@ h1 {
   }
 
   .parent-note-field textarea {
-    min-height: 62px;
+    min-height: 54px;
     padding: .4rem .5rem;
   }
 
@@ -2486,10 +2440,6 @@ h1 {
   .parent-note-like {
     min-height: 30px;
     padding: .2rem .5rem;
-  }
-
-  .parent-note-footer {
-    justify-content: flex-end;
   }
 
   .parent-note-add {

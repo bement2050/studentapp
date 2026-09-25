@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=45" />
+    <link rel="stylesheet" href="styles.css?v=46" />
   </head>
   <body class="is-authenticating">
     <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -138,17 +138,12 @@
       <section class="panel parent-note-card" aria-labelledby="parentNoteTitle">
         <div class="parent-note-heading">
           <div>
-            <span class="parent-note-kicker">Family connection</span>
-            <h2 id="parentNoteTitle">Parent notes for today</h2>
-            <p>Share questions, updates, or encouragement for the team.</p>
+            <h2 id="parentNoteTitle">Parent notes</h2>
+            <p>Questions or updates for the team</p>
           </div>
-          <span class="parent-note-icon" aria-hidden="true">&#128172;</span>
+          <button id="addParentNoteBtn" class="parent-note-add" type="button">+ Add note</button>
         </div>
         <div id="parentNotesList" class="parent-notes-list" aria-live="polite"></div>
-        <div class="parent-note-footer">
-          <span>Add as many separate notes as you need.</span>
-          <button id="addParentNoteBtn" class="parent-note-add" type="button">+ Add another note</button>
-        </div>
       </section>
 
       <div class="section-heading">
@@ -327,6 +322,6 @@
       </form>
     </dialog>
 
-    <script src="app.js?v=45"></script>
+    <script src="app.js?v=46"></script>
   </body>
 </html>
