@@ -1087,17 +1087,28 @@ function resetDictationButtons() {
   });
 }
 
+function updateAmharicButton(container) {
+  const button = container.querySelector(".translate-amharic-btn");
+  const hasText = Boolean(container.querySelector("textarea")?.value.trim());
+  if (!button) return;
+  const isTranslating = button.dataset.translating === "true";
+  button.disabled = isTranslating || !hasText;
+  button.title = hasText ? "Translate this note to Amharic" : "Enter text to translate to Amharic";
+}
+
 async function translateToAmharic(button, container) {
   const textArea = container.querySelector("textarea");
   const status = container.querySelector(".speech-to-text-status");
   const text = textArea?.value.trim() || "";
   if (!text) {
     status.textContent = "Write or dictate a note before translating it.";
+    updateAmharicButton(container);
     return;
   }
 
   const originalLabel = button.textContent;
-  button.disabled = true;
+  button.dataset.translating = "true";
+  updateAmharicButton(container);
   button.textContent = "Translating...";
   status.textContent = "Translating this note to Amharic...";
   try {
@@ -1125,8 +1136,9 @@ async function translateToAmharic(button, container) {
     status.textContent = error.message;
     setStatus(error.message);
   } finally {
-    button.disabled = false;
+    delete button.dataset.translating;
     button.textContent = originalLabel;
+    updateAmharicButton(container);
   }
 }
 
@@ -1326,6 +1338,7 @@ function updateParentNoteItems() {
     title.textContent = `Parent note ${index + 1}`;
     count.textContent = `${textArea.value.length} / 1000`;
     item.classList.toggle("is-empty", !textArea.value.trim());
+    updateAmharicButton(item);
     updateParentNoteLikeState(item);
   });
 }
@@ -1356,7 +1369,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
       <strong class="parent-note-item-title"></strong>
       <div class="parent-note-item-actions">
         <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
-        <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" title="Translate this parent note to Amharic">Amharic</button>
+        <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" title="Enter text to translate to Amharic" disabled>አማርኛ</button>
         <button type="button" class="parent-note-remove" aria-label="Remove parent note">Remove</button>
         <button type="button" class="parent-note-edit">Edit</button>
         <button type="button" class="parent-note-save">Save</button>
@@ -1566,6 +1579,7 @@ function updateFormProgress() {
     const count = block.querySelector(".character-count");
     count.textContent = `${note.value.length} characters`;
     block.classList.toggle("has-note", Boolean(note.value.trim()));
+    updateAmharicButton(block);
   });
 
   updateParentNoteItems();

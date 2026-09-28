@@ -892,6 +892,10 @@ fieldset label input:checked + span {
 
 .translate-amharic-btn:disabled {
   opacity: .55;
+  cursor: not-allowed;
+}
+
+.translate-amharic-btn[data-translating="true"] {
   cursor: wait;
 }
 
