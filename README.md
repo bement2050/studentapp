@@ -94,7 +94,7 @@ available only from an admin or superuser account.
 The public/publishable browser key is used by the web app. Never place a secret or
 service-role key in this repository.
 
-## Google Cloud Speech-to-Text Setup
+## Google Cloud Speech-to-Text and Amharic Translation Setup
 
 The microphone buttons send short recordings to the server-side function in
 `speech-function/`. The Google service-account JSON must stay outside this repository;
@@ -106,14 +106,24 @@ from this folder in PowerShell:
 ```powershell
 gcloud auth login
 gcloud config set project evocative-lodge-442118-j6
-gcloud services enable speech.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com
+gcloud services enable speech.googleapis.com translate.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com
+gcloud projects add-iam-policy-binding evocative-lodge-442118-j6 --member="serviceAccount:speech-to-text-sa@evocative-lodge-442118-j6.iam.gserviceaccount.com" --role="roles/cloudtranslate.user"
 gcloud functions deploy transcribeAudio --gen2 --runtime=nodejs24 --region=us-central1 --source=speech-function --entry-point=transcribeAudio --trigger-http --allow-unauthenticated --service-account=speech-to-text-sa@evocative-lodge-442118-j6.iam.gserviceaccount.com --memory=256MiB --timeout=70s --max-instances=2
+gcloud functions deploy translateToAmharic --gen2 --runtime=nodejs24 --region=us-central1 --source=speech-function --entry-point=translateToAmharic --trigger-http --allow-unauthenticated --service-account=speech-to-text-sa@evocative-lodge-442118-j6.iam.gserviceaccount.com --memory=256MiB --timeout=30s --max-instances=2
 ```
 
 The Google account used with `gcloud auth login` must be an owner or otherwise have
 permission to enable services and deploy Cloud Functions. The deployed function runs as
 the limited `speech-to-text-sa` service account represented by the provided JSON key.
 
-The browser endpoint is configured as `APP_CONFIG.speechToTextUrl` in `app.js`. If the
-deploy command returns a different URL, replace that setting. Microphone access works on
-HTTPS (including GitHub Pages) or localhost and requires the user to grant permission.
+The browser endpoints are configured as `APP_CONFIG.speechToTextUrl` and
+`APP_CONFIG.translateToAmharicUrl` in `app.js`. If either deploy command returns a
+different URL, replace the corresponding setting. Microphone access works on HTTPS
+(including GitHub Pages) or localhost and requires the user to grant permission.
+
+Translation uses Google's standard NMT model and targets Amharic (`am`). The translation
+endpoint is called only when a user presses an **Amharic** button; loading, editing, and
+saving notes do not call it. Google currently applies a monthly credit covering the first
+500,000 translated characters, shared across Cloud Translation Basic and Advanced usage.
+Billing must still be enabled, so configure a Google Cloud budget and translation quota
+appropriate for this app.

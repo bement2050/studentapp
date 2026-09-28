@@ -51,7 +51,8 @@ const APP_CONFIG = {
   supabaseUrl: "https://voanpatamwilfdwppleu.supabase.co",
   supabaseAnonKey: "sb_publishable_uDAkRERB3dCTfhh-_hl6sQ_Btddu68C",
   photoBucket: "journal-photos",
-  speechToTextUrl: "https://us-central1-evocative-lodge-442118-j6.cloudfunctions.net/transcribeAudio"
+  speechToTextUrl: "https://us-central1-evocative-lodge-442118-j6.cloudfunctions.net/transcribeAudio",
+  translateToAmharicUrl: "https://us-central1-evocative-lodge-442118-j6.cloudfunctions.net/translateToAmharic"
 };
 
 const childNameInput = document.getElementById("childName");
@@ -1086,6 +1087,49 @@ function resetDictationButtons() {
   });
 }
 
+async function translateToAmharic(button, container) {
+  const textArea = container.querySelector("textarea");
+  const status = container.querySelector(".speech-to-text-status");
+  const text = textArea?.value.trim() || "";
+  if (!text) {
+    status.textContent = "Write or dictate a note before translating it.";
+    return;
+  }
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "Translating...";
+  status.textContent = "Translating this note to Amharic...";
+  try {
+    const response = await fetch(APP_CONFIG.translateToAmharicUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+    let result = {};
+    try {
+      result = await response.json();
+    } catch {
+      // The response below provides a useful generic message when the endpoint is unavailable.
+    }
+    if (!response.ok) throw new Error(result.error || "Amharic translation is unavailable right now.");
+    const translation = String(result.translation || "").trim();
+    if (!translation) throw new Error("Google did not return a translation. Please try again.");
+
+    textArea.value = translation;
+    textArea.dispatchEvent(new Event("input", { bubbles: true }));
+    autoResizeNote(textArea);
+    status.textContent = "Translated to Amharic. Review the text, then tap Save.";
+    textArea.focus();
+  } catch (error) {
+    status.textContent = error.message;
+    setStatus(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
 async function transcribeRecording(recording) {
   const { button, chunks, sampleRate, status, textArea } = recording;
   setDictationButtonState(button, "working");
@@ -1312,6 +1356,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
       <strong class="parent-note-item-title"></strong>
       <div class="parent-note-item-actions">
         <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
+        <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" title="Translate this parent note to Amharic">Amharic</button>
         <button type="button" class="parent-note-remove" aria-label="Remove parent note">Remove</button>
         <button type="button" class="parent-note-edit">Edit</button>
         <button type="button" class="parent-note-save">Save</button>
@@ -2101,6 +2146,13 @@ parentNotesList.addEventListener("click", async (event) => {
     return;
   }
 
+  const translateButton = event.target.closest(".translate-amharic-btn");
+  if (translateButton) {
+    setParentNoteEditState(item, true);
+    await translateToAmharic(translateButton, item);
+    return;
+  }
+
   if (event.target.closest(".parent-note-like")) {
     if (!currentUser?.username) return;
     const likedBy = new Set(Array.isArray(item.likedBy) ? item.likedBy : []);
@@ -2148,6 +2200,16 @@ blocksContainer.addEventListener("click", async (event) => {
     if (block) {
       setNoteEditState(block, true);
       await toggleDictation(dictationButton, block);
+    }
+    return;
+  }
+
+  const translateButton = event.target.closest(".translate-amharic-btn");
+  if (translateButton) {
+    const block = translateButton.closest(".day-block");
+    if (block) {
+      setNoteEditState(block, true);
+      await translateToAmharic(translateButton, block);
     }
     return;
   }

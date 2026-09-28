@@ -863,7 +863,8 @@ fieldset label input:checked + span {
 
 .note-edit-btn,
 .note-save-btn,
-.speech-to-text-btn {
+.speech-to-text-btn,
+.translate-amharic-btn {
   min-height: 32px;
   padding: .22rem .6rem;
   border: 1px solid #adc4ba;
@@ -881,6 +882,17 @@ fieldset label input:checked + span {
   gap: .25rem;
   border-color: #b9a6d8;
   color: #5d3d86;
+}
+
+.translate-amharic-btn {
+  border-color: #d3b15f;
+  background: #fffaf0;
+  color: #76520c;
+}
+
+.translate-amharic-btn:disabled {
+  opacity: .55;
+  cursor: wait;
 }
 
 .speech-to-text-btn.is-recording {

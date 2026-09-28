@@ -1,7 +1,10 @@
 const { SpeechClient } = require("@google-cloud/speech");
+const { TranslationServiceClient } = require("@google-cloud/translate").v3;
 
 let speechClient;
+let translationClient;
 const MAX_AUDIO_BYTES = 6 * 1024 * 1024;
+const MAX_TRANSLATION_CHARACTERS = 5000;
 const DEFAULT_ORIGINS = [
   "https://bement2050.github.io",
   "http://localhost:4173",
@@ -33,17 +36,27 @@ function getSpeechClient() {
   return speechClient;
 }
 
-exports.transcribeAudio = async (req, res) => {
+function getTranslationClient() {
+  if (!translationClient) translationClient = new TranslationServiceClient();
+  return translationClient;
+}
+
+function setCorsHeaders(req, res) {
   const origin = req.get("origin") || "";
-  if (origin && !allowedOrigins().has(origin)) {
-    res.status(403).json({ error: "This website is not allowed to use voice typing." });
-    return;
-  }
+  if (origin && !allowedOrigins().has(origin)) return false;
   if (origin) res.set("Access-Control-Allow-Origin", origin);
   res.set("Vary", "Origin");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
   res.set("Access-Control-Max-Age", "3600");
+  return true;
+}
+
+exports.transcribeAudio = async (req, res) => {
+  if (!setCorsHeaders(req, res)) {
+    res.status(403).json({ error: "This website is not allowed to use voice typing." });
+    return;
+  }
 
   if (req.method === "OPTIONS") {
     res.status(204).send("");
@@ -86,5 +99,49 @@ exports.transcribeAudio = async (req, res) => {
     res.status(invalidAudio ? 400 : 500).json({
       error: invalidAudio ? error.message : "Google Speech-to-Text could not process this recording."
     });
+  }
+};
+
+exports.translateToAmharic = async (req, res) => {
+  if (!setCorsHeaders(req, res)) {
+    res.status(403).json({ error: "This website is not allowed to use translation." });
+    return;
+  }
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Use POST to translate text." });
+    return;
+  }
+
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  const characterCount = [...text].length;
+  if (!text) {
+    res.status(400).json({ error: "Add some text before translating." });
+    return;
+  }
+  if (characterCount > MAX_TRANSLATION_CHARACTERS) {
+    res.status(413).json({ error: `Translation is limited to ${MAX_TRANSLATION_CHARACTERS.toLocaleString()} characters at a time.` });
+    return;
+  }
+
+  try {
+    const client = getTranslationClient();
+    const projectId = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || await client.getProjectId();
+    const [response] = await client.translateText({
+      parent: `projects/${projectId}/locations/global`,
+      contents: [text],
+      mimeType: "text/plain",
+      targetLanguageCode: "am"
+    });
+    const translation = response.translations?.[0]?.translatedText?.trim() || "";
+    if (!translation) throw new Error("The translation response was empty.");
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({ translation });
+  } catch (error) {
+    console.error("Amharic translation failed", error);
+    res.status(500).json({ error: "Google Cloud Translation could not translate this note." });
   }
 };

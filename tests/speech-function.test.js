@@ -1,11 +1,12 @@
 const assert = require("node:assert/strict");
-const { transcribeAudio } = require("../speech-function");
+const { transcribeAudio, translateToAmharic } = require("../speech-function");
 
-function mockExchange({ method = "POST", origin = "https://bement2050.github.io", rawBody = Buffer.alloc(0) } = {}) {
+function mockExchange({ method = "POST", origin = "https://bement2050.github.io", rawBody = Buffer.alloc(0), body } = {}) {
   const response = { headers: {}, statusCode: null, body: null };
   const req = {
     method,
     rawBody,
+    body,
     get(name) {
       return name.toLowerCase() === "origin" ? origin : "";
     }
@@ -50,7 +51,23 @@ function mockExchange({ method = "POST", origin = "https://bement2050.github.io"
   assert.equal(invalid.response.statusCode, 400);
   assert.match(invalid.response.body.error, /WAV/);
 
-  console.log("speech function validation tests passed");
+  const translationPreflight = mockExchange({ method: "OPTIONS" });
+  await translateToAmharic(translationPreflight.req, translationPreflight.res);
+  assert.equal(translationPreflight.response.statusCode, 204);
+
+  const forbiddenTranslation = mockExchange({ origin: "https://example.com", body: { text: "Hello" } });
+  await translateToAmharic(forbiddenTranslation.req, forbiddenTranslation.res);
+  assert.equal(forbiddenTranslation.response.statusCode, 403);
+
+  const emptyTranslation = mockExchange({ body: { text: "   " } });
+  await translateToAmharic(emptyTranslation.req, emptyTranslation.res);
+  assert.equal(emptyTranslation.response.statusCode, 400);
+
+  const oversizedTranslation = mockExchange({ body: { text: "a".repeat(5001) } });
+  await translateToAmharic(oversizedTranslation.req, oversizedTranslation.res);
+  assert.equal(oversizedTranslation.response.statusCode, 413);
+
+  console.log("speech and translation function validation tests passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;
