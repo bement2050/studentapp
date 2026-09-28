@@ -115,6 +115,7 @@ let saveInProgress = null;
 let activeDate = todayISO();
 let activeDictation = null;
 const previewUrls = new Set();
+const amharicTranslationStates = new WeakMap();
 
 function findUser(username) {
   const normalized = String(username || "").trim().toLowerCase();
@@ -1089,11 +1090,66 @@ function resetDictationButtons() {
 
 function updateAmharicButton(container) {
   const button = container.querySelector(".translate-amharic-btn");
-  const hasText = Boolean(container.querySelector("textarea")?.value.trim());
-  if (!button) return;
+  const textArea = container.querySelector("textarea");
+  if (!button || !textArea) return;
+  let state = amharicTranslationStates.get(textArea);
+  const currentText = textArea.value.trim();
+  if (state && !state.updating && currentText !== state.sourceText && currentText !== state.translatedText) {
+    clearTimeout(state.timer);
+    amharicTranslationStates.delete(textArea);
+    button.textContent = "አማርኛ";
+    button.setAttribute("aria-pressed", "false");
+    state = null;
+  }
   const isTranslating = button.dataset.translating === "true";
-  button.disabled = isTranslating || !hasText;
-  button.title = hasText ? "Translate this note to Amharic" : "Enter text to translate to Amharic";
+  button.disabled = isTranslating || !currentText;
+  button.setAttribute("aria-pressed", String(Boolean(state?.previewing)));
+  button.title = state?.previewing
+    ? "Press again to return to the original English text"
+    : currentText ? "Translate this note to Amharic" : "Enter text to translate to Amharic";
+}
+
+function noteTextForPersistence(textArea) {
+  const state = amharicTranslationStates.get(textArea);
+  return (state?.previewing ? state.sourceText : textArea.value).trim();
+}
+
+function setTranslatedNoteText(textArea, value, state) {
+  state.updating = true;
+  textArea.value = value;
+  textArea.dispatchEvent(new Event("input", { bubbles: true }));
+  autoResizeNote(textArea);
+  state.updating = false;
+}
+
+function restoreOriginalNote(button, container, state, message) {
+  const textArea = container.querySelector("textarea");
+  const status = container.querySelector(".speech-to-text-status");
+  clearTimeout(state.timer);
+  state.previewing = false;
+  button.textContent = "አማርኛ";
+  button.setAttribute("aria-pressed", "false");
+  setTranslatedNoteText(textArea, state.sourceText, state);
+  status.textContent = message;
+  updateAmharicButton(container);
+}
+
+function previewAmharicTranslation(button, container, state, { cached = false } = {}) {
+  const textArea = container.querySelector("textarea");
+  const status = container.querySelector(".speech-to-text-status");
+  clearTimeout(state.timer);
+  state.previewing = true;
+  amharicTranslationStates.set(textArea, state);
+  button.textContent = "አማርኛ";
+  button.setAttribute("aria-pressed", "true");
+  setTranslatedNoteText(textArea, state.translatedText, state);
+  state.timer = setTimeout(() => {
+    if (!state.previewing || amharicTranslationStates.get(textArea) !== state) return;
+    restoreOriginalNote(button, container, state, "Returned to the original English text.");
+  }, 10_000);
+  status.textContent = `${cached ? "Using the saved translation. " : ""}Press አማርኛ again to return to English, or wait 10 seconds.`;
+  updateAmharicButton(container);
+  textArea.focus();
 }
 
 async function translateToAmharic(button, container) {
@@ -1106,7 +1162,20 @@ async function translateToAmharic(button, container) {
     return;
   }
 
-  const originalLabel = button.textContent;
+  const existingState = amharicTranslationStates.get(textArea);
+  if (existingState?.previewing && text === existingState.translatedText) {
+    restoreOriginalNote(button, container, existingState, "Original English text restored.");
+    return;
+  }
+  if (existingState && text === existingState.translatedText) {
+    status.textContent = "This saved note is already using the Amharic translation.";
+    return;
+  }
+  if (existingState && text === existingState.sourceText) {
+    previewAmharicTranslation(button, container, existingState, { cached: true });
+    return;
+  }
+
   button.dataset.translating = "true";
   updateAmharicButton(container);
   button.textContent = "Translating...";
@@ -1126,18 +1195,19 @@ async function translateToAmharic(button, container) {
     if (!response.ok) throw new Error(result.error || "Amharic translation is unavailable right now.");
     const translation = String(result.translation || "").trim();
     if (!translation) throw new Error("Google did not return a translation. Please try again.");
-
-    textArea.value = translation;
-    textArea.dispatchEvent(new Event("input", { bubbles: true }));
-    autoResizeNote(textArea);
-    status.textContent = "Translated to Amharic. Review the text, then tap Save.";
-    textArea.focus();
+    previewAmharicTranslation(button, container, {
+      sourceText: text,
+      translatedText: translation,
+      previewing: false,
+      updating: false,
+      timer: null
+    });
   } catch (error) {
+    button.textContent = "አማርኛ";
     status.textContent = error.message;
     setStatus(error.message);
   } finally {
     delete button.dataset.translating;
-    button.textContent = originalLabel;
     updateAmharicButton(container);
   }
 }
@@ -1307,7 +1377,7 @@ function parentNoteValues() {
   return [...parentNotesList.querySelectorAll(".parent-note-item")]
     .map((item) => ({
       id: item.dataset.noteId || createParentNoteId(),
-      text: item.querySelector("textarea").value.trim(),
+      text: noteTextForPersistence(item.querySelector("textarea")),
       likedBy: Array.isArray(item.likedBy) ? item.likedBy : []
     }))
     .filter((note) => note.text);
@@ -1369,7 +1439,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
       <strong class="parent-note-item-title"></strong>
       <div class="parent-note-item-actions">
         <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
-        <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" title="Enter text to translate to Amharic" disabled>አማርኛ</button>
+        <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" aria-pressed="false" title="Enter text to translate to Amharic" disabled>አማርኛ</button>
         <button type="button" class="parent-note-remove" aria-label="Remove parent note">Remove</button>
         <button type="button" class="parent-note-edit">Edit</button>
         <button type="button" class="parent-note-save">Save</button>
@@ -1453,12 +1523,14 @@ function readCurrentForm() {
       ...block.querySelectorAll('.activity-row input[type="checkbox"]:checked')
     ];
 
+    const noteText = noteTextForPersistence(block.querySelector("textarea"));
+
     return {
       title: block.querySelector(".block-title").textContent,
       mood: selectedMoods[0] || "",
       moods: selectedMoods,
       activities: checkedActivities.map((item) => item.value),
-      notes: block.querySelector("textarea").value.trim(),
+      notes: noteText,
       commentLikedBy: Array.isArray(block.commentLikedBy) ? block.commentLikedBy : [],
       ...(index === 0 ? { parentNotes } : {}),
       speech: block.querySelector(".speech").checked,

@@ -890,6 +890,12 @@ fieldset label input:checked + span {
   color: #76520c;
 }
 
+.translate-amharic-btn[aria-pressed="true"] {
+  border-color: #a87916;
+  background: #f4dfaa;
+  box-shadow: 0 0 0 3px rgba(168, 121, 22, .14);
+}
+
 .translate-amharic-btn:disabled {
   opacity: .55;
   cursor: not-allowed;
