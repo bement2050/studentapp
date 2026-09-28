@@ -1,0 +1,20 @@
+{
+  "name": "today-journal-backup",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "24"
+  },
+  "scripts": {
+    "start": "functions-framework --target=backupJournal",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^5.0.5",
+    "@google-cloud/storage": "^8.2.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

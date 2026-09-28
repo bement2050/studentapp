@@ -22,6 +22,7 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Small Print action at the top on phone and desktop
 - Automatic localized date/time with the device's global IANA timezone
 - Google Cloud voice typing for daily notes and parent notes
+- Automatic private daily backups of entries and photos with 90-day retention
 
 ## Run Locally
 
@@ -127,3 +128,16 @@ saving notes do not call it. Google currently applies a monthly credit covering 
 500,000 translated characters, shared across Cloud Translation Basic and Advanced usage.
 Billing must still be enabled, so configure a Google Cloud budget and translation quota
 appropriate for this app.
+
+## Automatic backups
+
+Journal data is backed up independently of GitHub Pages. The private Google Cloud
+Storage bucket contains daily, timestamped snapshots of every journal entry, photo
+record, and photo file. Each completed snapshot has a SHA-256 manifest, incomplete runs
+are never promoted as the latest backup, and snapshots expire after 90 days.
+
+The `backupJournal` Cloud Run function requires authentication and is called at 2:00 AM
+`America/New_York` by the `journal-backup-daily` Cloud Scheduler job. Source code and
+recovery instructions are in [`backup-function/README.md`](backup-function/README.md).
+Backup data must remain in the private bucket and must never be committed to this public
+repository.

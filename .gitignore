@@ -9,3 +9,4 @@ Thumbs.db
 *.service-account.json
 gcp-service-account*.json
 evocative-lodge-442118-j6-7337d7c9908b.json
+backup-function/deployment.env.yaml
