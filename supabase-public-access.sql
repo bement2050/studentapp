@@ -143,7 +143,8 @@ begin
   if p_project_id <> 'sam-about-my-day'
      or p_event not in ('open', 'close')
      or lower(p_username) not in (
-       'jkarim', 'amamo', 'balemayehu', 'sgebreyes', 'gchere', 'talemayehu', 'aalemayehu'
+       'jkarim', 'amamo', 'balemayehu', 'sgebreyes', 'gchere', 'talemayehu', 'aalemayehu',
+       'vlaguerre', 'cgreer', 'cking'
      ) then
     raise exception 'Invalid access event';
   end if;
@@ -246,7 +247,8 @@ begin
   if p_project_id <> 'sam-about-my-day'
      or p_event not in ('open', 'close', 'view')
      or lower(p_username) not in (
-       'jkarim', 'amamo', 'balemayehu', 'sgebreyes', 'gchere', 'talemayehu', 'aalemayehu'
+       'jkarim', 'amamo', 'balemayehu', 'sgebreyes', 'gchere', 'talemayehu', 'aalemayehu',
+       'vlaguerre', 'cgreer', 'cking'
      ) then
     raise exception 'Invalid access event';
   end if;

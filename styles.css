@@ -473,8 +473,8 @@ button:focus-visible {
 
 .parent-note-card {
   display: grid;
-  gap: .5rem;
-  padding: .75rem .8rem;
+  gap: .35rem;
+  padding: .55rem .65rem;
   border-color: var(--line);
   background: var(--panel);
 }
@@ -508,8 +508,8 @@ button:focus-visible {
 
 .parent-note-item {
   display: grid;
-  gap: .3rem;
-  padding: .55rem;
+  gap: .2rem;
+  padding: .4rem .5rem;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
@@ -531,6 +531,36 @@ button:focus-visible {
   font-size: .8rem;
 }
 
+.parent-note-item-label {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+}
+
+.tracking-reference {
+  min-height: 0;
+  padding: .12rem .4rem;
+  border: 1px solid #b9cec6;
+  border-radius: 999px;
+  background: #f4f8f6;
+  color: #315e52;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: .62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  cursor: copy;
+}
+
+.tracking-reference:hover {
+  border-color: var(--green);
+  background: var(--soft-green);
+}
+
+.tracking-reference[hidden] {
+  display: none;
+}
+
 .parent-note-field textarea {
   min-height: 4rem;
   padding: .5rem .6rem;
@@ -541,7 +571,7 @@ button:focus-visible {
 
 .parent-note-item:not(.is-editing) .parent-note-field textarea {
   min-height: 0;
-  padding: .15rem 0;
+  padding: .05rem 0;
   overflow: hidden;
   border: 0;
   border-radius: 0;
@@ -607,7 +637,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: .55rem;
-  padding-top: .4rem;
+  padding-top: .25rem;
   border-top: 1px solid #e1e9f1;
 }
 
@@ -655,6 +685,39 @@ button:focus-visible {
 
 .parent-note-item.is-empty .parent-note-social {
   display: none;
+}
+
+/* Saved notes are primarily for reading, so keep their controls secondary and compact. */
+.parent-note-item:not(.is-editing) .parent-note-item-header {
+  grid-column: 1 / -1;
+  min-height: 26px;
+}
+
+.parent-note-item:not(.is-editing) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.parent-note-item:not(.is-editing) .parent-note-field {
+  min-width: 0;
+}
+
+.parent-note-item:not(.is-editing) .parent-note-item-actions button,
+.parent-note-item:not(.is-editing) .parent-note-like {
+  min-height: 26px;
+  padding: .12rem .45rem;
+}
+
+.parent-note-item:not(.is-editing) .parent-note-social {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  gap: .4rem;
+  padding: 0 0 0 .45rem;
+  border-top: 0;
+}
+
+.parent-note-item:not(.is-editing) .parent-note-liked-by {
+  max-width: 12rem;
 }
 
 .day-block {
@@ -989,6 +1052,13 @@ fieldset label input:checked + span {
 .reaction-copy {
   display: grid;
   gap: .08rem;
+  min-width: 0;
+}
+
+.reaction-heading {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
   min-width: 0;
 }
 
@@ -2175,8 +2245,8 @@ h1 {
   }
 
   .parent-note-card {
-    gap: .4rem;
-    padding: .55rem .6rem;
+    gap: .3rem;
+    padding: .45rem .5rem;
   }
 
   .parent-note-heading h2 {
@@ -2188,12 +2258,12 @@ h1 {
   }
 
   .parent-notes-list {
-    gap: .45rem;
+    gap: .3rem;
   }
 
   .parent-note-item {
-    gap: .35rem;
-    padding: .55rem;
+    gap: .2rem;
+    padding: .4rem .45rem;
   }
 
   .parent-note-field textarea {
@@ -2313,7 +2383,7 @@ h1 {
   .parent-note-card,
   .parent-notes-list,
   .parent-note-item {
-    gap: .3rem;
+    gap: .2rem;
   }
 
   .parent-note-heading p {
@@ -2431,12 +2501,12 @@ h1 {
   .parent-note-card,
   .parent-notes-list,
   .parent-note-item {
-    gap: .35rem;
+    gap: .2rem;
   }
 
   .parent-note-item {
-    padding: .55rem;
-    border-radius: 11px;
+    padding: .38rem .42rem;
+    border-radius: 9px;
   }
 
   .parent-note-item-header {
@@ -2464,8 +2534,8 @@ h1 {
   }
 
   .parent-note-social {
-    gap: .4rem;
-    padding-top: .3rem;
+    gap: .35rem;
+    padding-top: .15rem;
   }
 
   .parent-note-like {

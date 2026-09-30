@@ -9,11 +9,14 @@ const BLOCK_TITLES = [
 const APP_USERS = [
   { username: "JKarim", initialPassword: "Karim2026", role: "user", credentialVersion: 1 },
   { username: "Amamo", initialPassword: "Mamo2026", role: "user", credentialVersion: 1 },
-  { username: "BAlemayehu", initialPassword: "B9!vQ2#L7@pX", role: "superuser", credentialVersion: 2 },
+  { username: "BAlemayehu", displayName: "Bemnet Alemayehu", initialPassword: "B9!vQ2#L7@pX", role: "superuser", credentialVersion: 2 },
   { username: "SGebreyes", initialPassword: "Sunrise!482", role: "user", credentialVersion: 1 },
   { username: "GChere", initialPassword: "Cobalt#731", role: "user", credentialVersion: 1 },
   { username: "TAlemayehu", initialPassword: "Maple$864", role: "user", credentialVersion: 1 },
-  { username: "AAlemayehu", initialPassword: "River@295", role: "user", credentialVersion: 1 }
+  { username: "AAlemayehu", initialPassword: "River@295", role: "user", credentialVersion: 1 },
+  { username: "VLaguerre", displayName: "Vanessa Laguerre", initialPassword: "Willow#2486", role: "user", credentialVersion: 1 },
+  { username: "CGreer", displayName: "Courtney Greer", initialPassword: "Amber!4697", role: "user", credentialVersion: 1 },
+  { username: "CKing", displayName: "Chetela King", initialPassword: "Harbor@7315", role: "user", credentialVersion: 1 }
 ];
 const AUTH_STORAGE_KEY = "todays-journal-auth-session";
 const PASSWORD_STORAGE_KEY = "todays-journal-passwords";
@@ -120,6 +123,10 @@ const amharicTranslationStates = new WeakMap();
 function findUser(username) {
   const normalized = String(username || "").trim().toLowerCase();
   return APP_USERS.find((user) => user.username.toLowerCase() === normalized) || null;
+}
+
+function displayNameForUser(user) {
+  return user?.displayName || user?.username || "";
 }
 
 function canViewStats(user) {
@@ -459,15 +466,15 @@ async function renderAccessStats() {
 function openAccountSettings() {
   if (!currentUser) return;
   signedInSummary.textContent = currentUser.role === "superuser"
-    ? `Signed in as ${currentUser.username} · Superuser`
-    : `Signed in as ${currentUser.username}`;
+    ? `Signed in as ${displayNameForUser(currentUser)} · Superuser`
+    : `Signed in as ${displayNameForUser(currentUser)}`;
   passwordUserWrap.hidden = currentUser.role !== "superuser";
   accessStats.hidden = !canViewStats(currentUser);
   passwordUser.innerHTML = "";
   APP_USERS.forEach((user) => {
     const option = document.createElement("option");
     option.value = user.username;
-    option.textContent = `${user.username}${user.role === "superuser" ? " (superuser)" : ""}`;
+    option.textContent = `${displayNameForUser(user)} (${user.username})${user.role === "superuser" ? " · superuser" : ""}`;
     option.selected = user.username === currentUser.username;
     passwordUser.appendChild(option);
   });
@@ -481,7 +488,8 @@ function showJournal(user) {
   currentUser = user;
   document.body.classList.remove("is-authenticating");
   loginScreen.hidden = true;
-  accountBtn.textContent = user.role === "superuser" ? `${user.username} · Superuser` : user.username;
+  const displayName = displayNameForUser(user);
+  accountBtn.textContent = user.role === "superuser" ? `${displayName} · Superuser` : displayName;
   startAccessSession();
   if (!appStarted) {
     appStarted = true;
@@ -889,12 +897,31 @@ function keyForEntry(date, childName) {
 }
 
 function mapSupabaseRowToEntry(row) {
+  const blocks = (Array.isArray(row.blocks) ? row.blocks : []).map((block, blockIndex) => {
+    const normalizedBlock = {
+      ...block,
+      commentId: block.notes ? row.id : ""
+    };
+    if (blockIndex === 0 && Array.isArray(block.parentNotes)) {
+      normalizedBlock.parentNotes = block.parentNotes.map((note, noteIndex) => {
+        if (typeof note === "string") {
+          return { id: row.id, text: note, likedBy: [] };
+        }
+        return {
+          ...note,
+          id: row.id
+        };
+      });
+    }
+    return normalizedBlock;
+  });
+
   return {
     id: row.id,
     date: row.date,
     childName: row.child_name,
     staffInitials: row.staff_initials,
-    blocks: row.blocks,
+    blocks,
     updatedAt: row.updated_at
   };
 }
@@ -1354,8 +1381,63 @@ function setBlockLikes(block, likedBy = []) {
 }
 
 function createParentNoteId() {
-  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-  return `parent-note-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (window.crypto?.randomUUID) return `PN-${window.crypto.randomUUID()}`;
+  return `PN-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function createCommentId() {
+  if (window.crypto?.randomUUID) return `TC-${window.crypto.randomUUID()}`;
+  return `TC-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function trackingHash(value) {
+  let hash = 2166136261;
+  for (const character of String(value || "")) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0").toUpperCase();
+}
+
+function legacyCommentId(entryId, blockIndex) {
+  return `TC-${trackingHash(entryId)}-${blockIndex + 1}`;
+}
+
+function legacyParentNoteId(entryId, noteIndex) {
+  return `PN-${trackingHash(`${entryId}::parent-note`)}-${noteIndex + 1}`;
+}
+
+function trackingReference(id, prefix) {
+  const value = String(id || "");
+  if (/^(PN|TC)-[A-F0-9]{8}-\d+$/i.test(value)) return value.toUpperCase();
+  const compact = value.replace(/^(PN|TC)-/i, "").replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase();
+  return compact ? `${prefix}-${compact}` : "";
+}
+
+function currentRowId() {
+  const date = entryDateInput.value;
+  const childName = childNameInput.value.trim();
+  return date && childName ? keyForEntry(date, childName) : "";
+}
+
+function updateTrackingButton(button, rowId) {
+  if (!button) return;
+  button.hidden = !rowId;
+  button.textContent = rowId ? `row_id: ${rowId}` : "";
+  button.dataset.trackingId = rowId || "";
+  button.title = rowId ? `Copy row_id: ${rowId}` : "";
+  button.setAttribute("aria-label", rowId ? `Copy row ID ${rowId}` : "Row ID unavailable");
+}
+
+async function copyTrackingId(button) {
+  const id = button?.dataset.trackingId;
+  if (!id) return;
+  try {
+    await navigator.clipboard.writeText(id);
+    setStatus(`Copied ${button.textContent}`);
+  } catch {
+    setStatus(`row_id: ${id}`);
+  }
 }
 
 function normalizeParentNote(note) {
@@ -1373,10 +1455,10 @@ function normalizeParentNote(note) {
   };
 }
 
-function parentNoteValues() {
+function parentNoteValues(rowId = currentRowId()) {
   return [...parentNotesList.querySelectorAll(".parent-note-item")]
     .map((item) => ({
-      id: item.dataset.noteId || createParentNoteId(),
+      id: rowId,
       text: noteTextForPersistence(item.querySelector("textarea")),
       likedBy: Array.isArray(item.likedBy) ? item.likedBy : []
     }))
@@ -1401,11 +1483,14 @@ function updateParentNoteLikeState(item) {
 
 function updateParentNoteItems() {
   const items = [...parentNotesList.querySelectorAll(".parent-note-item")];
+  const rowId = currentRowId();
   items.forEach((item, index) => {
     const title = item.querySelector(".parent-note-item-title");
+    const reference = item.querySelector(".tracking-reference");
     const textArea = item.querySelector("textarea");
     const count = item.querySelector(".parent-note-count");
     title.textContent = `Parent note ${index + 1}`;
+    updateTrackingButton(reference, rowId);
     count.textContent = `${textArea.value.length} / 1000`;
     item.classList.toggle("is-empty", !textArea.value.trim());
     updateAmharicButton(item);
@@ -1436,7 +1521,10 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
   item.className = "parent-note-item";
   item.innerHTML = `
     <div class="parent-note-item-header">
-      <strong class="parent-note-item-title"></strong>
+      <span class="parent-note-item-label">
+        <strong class="parent-note-item-title"></strong>
+        <button type="button" class="tracking-reference"></button>
+      </span>
       <div class="parent-note-item-actions">
         <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
         <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" aria-pressed="false" title="Enter text to translate to Amharic" disabled>አማርኛ</button>
@@ -1514,7 +1602,8 @@ function createBlocks() {
 }
 
 function readCurrentForm() {
-  const parentNotes = parentNoteValues();
+  const rowId = keyForEntry(entryDateInput.value, childNameInput.value);
+  const parentNotes = parentNoteValues(rowId);
   const blocks = [...document.querySelectorAll(".day-block")].map((block, index) => {
     const selectedMoods = [
       ...block.querySelectorAll(".mood-row input:checked")
@@ -1524,6 +1613,7 @@ function readCurrentForm() {
     ];
 
     const noteText = noteTextForPersistence(block.querySelector("textarea"));
+    block.dataset.commentId = noteText ? rowId : "";
 
     return {
       title: block.querySelector(".block-title").textContent,
@@ -1531,6 +1621,7 @@ function readCurrentForm() {
       moods: selectedMoods,
       activities: checkedActivities.map((item) => item.value),
       notes: noteText,
+      commentId: noteText ? rowId : "",
       commentLikedBy: Array.isArray(block.commentLikedBy) ? block.commentLikedBy : [],
       ...(index === 0 ? { parentNotes } : {}),
       speech: block.querySelector(".speech").checked,
@@ -1539,7 +1630,7 @@ function readCurrentForm() {
   });
 
   return {
-    id: keyForEntry(entryDateInput.value, childNameInput.value),
+    id: rowId,
     date: entryDateInput.value,
     childName: childNameInput.value.trim(),
     staffInitials: staffInitialsInput.value.trim().toUpperCase(),
@@ -1581,6 +1672,9 @@ function writeForm(entry) {
 
     const noteField = element.querySelector("textarea");
     noteField.value = block.notes || "";
+    element.dataset.commentId = block.notes
+      ? block.commentId || legacyCommentId(entry.id, i)
+      : "";
     setBlockLikes(element, block.commentLikedBy || []);
     setNoteEditState(element, false);
     element.querySelector(".speech").checked = Boolean(block.speech);
@@ -1618,6 +1712,7 @@ function clearForm(keepHeader = false) {
     textArea.value = "";
     const block = textArea.closest(".day-block");
     if (block) {
+      block.dataset.commentId = "";
       setNoteEditState(block, false);
     }
   });
@@ -1637,6 +1732,7 @@ function clearForm(keepHeader = false) {
 
 function updateFormProgress() {
   const blocks = [...document.querySelectorAll(".day-block")];
+  const rowId = currentRowId();
 
   blocks.forEach((block) => {
     const note = block.querySelector("textarea");
@@ -1650,8 +1746,11 @@ function updateFormProgress() {
 
     const count = block.querySelector(".character-count");
     count.textContent = `${note.value.length} characters`;
-    block.classList.toggle("has-note", Boolean(note.value.trim()));
+    const hasNote = Boolean(note.value.trim());
+    if (hasNote && !block.dataset.commentId) block.dataset.commentId = createCommentId();
+    block.classList.toggle("has-note", hasNote);
     updateAmharicButton(block);
+    updateTrackingButton(block.querySelector(".comment-reference"), hasNote ? rowId : "");
   });
 
   updateParentNoteItems();
@@ -1809,6 +1908,7 @@ async function copyLastDay() {
   const copiedBlocks = (previous.blocks || []).map((block, index) => ({
     ...block,
     reaction: "",
+    commentId: "",
     commentLikedBy: [],
     ...(index === 0 ? { parentNotes: [], dailyParentNote: "" } : {})
   }));
@@ -1890,17 +1990,24 @@ async function renderHistory() {
   const query = historySearch.value.trim().toLowerCase();
   const month = historyMonth.value;
   const filtered = entries.filter((entry) => {
-    const searchable = [
-      entry.date,
+     const searchable = [
+       entry.id,
+       entry.date,
       entry.childName,
       entry.staffInitials,
-      ...(entry.blocks || []).flatMap((block) => [
-        block.title,
-        block.mood,
-        ...(block.moods || []),
-        ...(block.activities || []),
-        block.notes
-      ])
+       ...(entry.blocks || []).flatMap((block) => [
+         block.title,
+         block.mood,
+         ...(block.moods || []),
+         ...(block.activities || []),
+         block.notes,
+         block.commentId,
+         trackingReference(block.commentId, "TC"),
+         ...(block.parentNotes || []).flatMap((note) => [
+           note?.id,
+           trackingReference(note?.id, "PN")
+         ])
+       ])
     ].filter(Boolean).join(" ").toLowerCase();
     return (!query || searchable.includes(query))
       && (!month || entry.date?.startsWith(month));
@@ -2049,7 +2156,7 @@ function preparePrintLayout() {
   paperParentNote.textContent = printParentNotes.length
     ? printParentNotes.map((note, index) => {
       const likedBy = note.likedBy?.length ? ` (Liked by ${note.likedBy.join(", ")})` : "";
-      return `${index + 1}. ${note.text}${likedBy}`;
+      return `${index + 1}. [row_id: ${entry.id}] ${note.text}${likedBy}`;
     }).join("\n")
     : "No parent note added.";
   paperRows.innerHTML = "";
@@ -2117,7 +2224,9 @@ function preparePrintLayout() {
 
     notesPanel.className = "paper-notes-panel";
     notesTitle.className = "paper-notes-title";
-    notesTitle.textContent = "Notes:";
+    notesTitle.textContent = block.notes
+      ? `Notes · row_id: ${entry.id}:`
+      : "Notes:";
     noteText.className = "paper-note-text";
     const commentLikes = block.commentLikedBy?.length
       ? `\nLiked by ${block.commentLikedBy.join(", ")}`
@@ -2200,6 +2309,7 @@ nextDayBtn.addEventListener("click", () => openDate(dateOffset(activeDate, 1)));
 todayBtn.addEventListener("click", () => openDate(todayISO()));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
+  if (event.target.matches("#childName")) updateFormProgress();
   if (event.target.matches(".parent-note-item textarea")) {
     formIsDirty = true;
     formChangeVersion += 1;
@@ -2224,6 +2334,12 @@ document.querySelector(".app-shell").addEventListener("change", (event) => {
 parentNotesList.addEventListener("click", async (event) => {
   const item = event.target.closest(".parent-note-item");
   if (!item) return;
+
+  const trackingButton = event.target.closest(".tracking-reference");
+  if (trackingButton) {
+    await copyTrackingId(trackingButton);
+    return;
+  }
 
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
@@ -2280,6 +2396,12 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 });
 blocksContainer.addEventListener("click", async (event) => {
+  const trackingButton = event.target.closest(".tracking-reference");
+  if (trackingButton) {
+    await copyTrackingId(trackingButton);
+    return;
+  }
+
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
     const block = dictationButton.closest(".day-block");

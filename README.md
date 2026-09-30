@@ -14,7 +14,7 @@ Journal entries and photos are stored centrally in Supabase for link-based acces
 - Compact date picker at the top and unlimited previous/next/today navigation at the bottom
 - Automatic "No school" entries on closure days
 - Phone-friendly controls with automatic saving
-- Password-protected sign-in for the three configured staff accounts
+- Password-protected sign-in for the configured staff accounts
 - Keeps users signed in on their device by default
 - Lets every user change their password; the superuser can change any account password
 - Camera/photo attachments for every check-in (up to 8 per section)
@@ -70,6 +70,9 @@ Then visit `http://localhost:4173`.
 - `GChere` / `Cobalt#731`
 - `TAlemayehu` / `Maple$864`
 - `AAlemayehu` / `River@295`
+- `VLaguerre` / `Willow#2486` — Vanessa Laguerre, (248) 468-0670
+- `CGreer` / `Amber!4697` — BCBA Courtney Greer, (469) 672-7173
+- `CKing` / `Harbor@7315` — Tech contact Chetela King
 
 Open **Account** after signing in to change a password. `BAlemayehu` can select and
 change any configured user's password. The daily opening/closing report is only shown
