@@ -531,36 +531,6 @@ button:focus-visible {
   font-size: .8rem;
 }
 
-.parent-note-item-label {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  min-width: 0;
-}
-
-.tracking-reference {
-  min-height: 0;
-  padding: .12rem .4rem;
-  border: 1px solid #b9cec6;
-  border-radius: 999px;
-  background: #f4f8f6;
-  color: #315e52;
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-  font-size: .62rem;
-  font-weight: 800;
-  line-height: 1.25;
-  cursor: copy;
-}
-
-.tracking-reference:hover {
-  border-color: var(--green);
-  background: var(--soft-green);
-}
-
-.tracking-reference[hidden] {
-  display: none;
-}
-
 .parent-note-field textarea {
   min-height: 4rem;
   padding: .5rem .6rem;
@@ -1052,13 +1022,6 @@ fieldset label input:checked + span {
 .reaction-copy {
   display: grid;
   gap: .08rem;
-  min-width: 0;
-}
-
-.reaction-heading {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
   min-width: 0;
 }
 

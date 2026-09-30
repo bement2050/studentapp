@@ -1420,26 +1420,6 @@ function currentRowId() {
   return date && childName ? keyForEntry(date, childName) : "";
 }
 
-function updateTrackingButton(button, rowId) {
-  if (!button) return;
-  button.hidden = !rowId;
-  button.textContent = rowId ? `row_id: ${rowId}` : "";
-  button.dataset.trackingId = rowId || "";
-  button.title = rowId ? `Copy row_id: ${rowId}` : "";
-  button.setAttribute("aria-label", rowId ? `Copy row ID ${rowId}` : "Row ID unavailable");
-}
-
-async function copyTrackingId(button) {
-  const id = button?.dataset.trackingId;
-  if (!id) return;
-  try {
-    await navigator.clipboard.writeText(id);
-    setStatus(`Copied ${button.textContent}`);
-  } catch {
-    setStatus(`row_id: ${id}`);
-  }
-}
-
 function normalizeParentNote(note) {
   if (typeof note === "string") {
     return { id: createParentNoteId(), text: note, likedBy: [] };
@@ -1483,14 +1463,11 @@ function updateParentNoteLikeState(item) {
 
 function updateParentNoteItems() {
   const items = [...parentNotesList.querySelectorAll(".parent-note-item")];
-  const rowId = currentRowId();
   items.forEach((item, index) => {
     const title = item.querySelector(".parent-note-item-title");
-    const reference = item.querySelector(".tracking-reference");
     const textArea = item.querySelector("textarea");
     const count = item.querySelector(".parent-note-count");
     title.textContent = `Parent note ${index + 1}`;
-    updateTrackingButton(reference, rowId);
     count.textContent = `${textArea.value.length} / 1000`;
     item.classList.toggle("is-empty", !textArea.value.trim());
     updateAmharicButton(item);
@@ -1521,10 +1498,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
   item.className = "parent-note-item";
   item.innerHTML = `
     <div class="parent-note-item-header">
-      <span class="parent-note-item-label">
-        <strong class="parent-note-item-title"></strong>
-        <button type="button" class="tracking-reference"></button>
-      </span>
+      <strong class="parent-note-item-title"></strong>
       <div class="parent-note-item-actions">
         <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
         <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" aria-pressed="false" title="Enter text to translate to Amharic" disabled>አማርኛ</button>
@@ -1732,7 +1706,6 @@ function clearForm(keepHeader = false) {
 
 function updateFormProgress() {
   const blocks = [...document.querySelectorAll(".day-block")];
-  const rowId = currentRowId();
 
   blocks.forEach((block) => {
     const note = block.querySelector("textarea");
@@ -1750,7 +1723,6 @@ function updateFormProgress() {
     if (hasNote && !block.dataset.commentId) block.dataset.commentId = createCommentId();
     block.classList.toggle("has-note", hasNote);
     updateAmharicButton(block);
-    updateTrackingButton(block.querySelector(".comment-reference"), hasNote ? rowId : "");
   });
 
   updateParentNoteItems();
@@ -2156,7 +2128,7 @@ function preparePrintLayout() {
   paperParentNote.textContent = printParentNotes.length
     ? printParentNotes.map((note, index) => {
       const likedBy = note.likedBy?.length ? ` (Liked by ${note.likedBy.join(", ")})` : "";
-      return `${index + 1}. [row_id: ${entry.id}] ${note.text}${likedBy}`;
+      return `${index + 1}. ${note.text}${likedBy}`;
     }).join("\n")
     : "No parent note added.";
   paperRows.innerHTML = "";
@@ -2224,9 +2196,7 @@ function preparePrintLayout() {
 
     notesPanel.className = "paper-notes-panel";
     notesTitle.className = "paper-notes-title";
-    notesTitle.textContent = block.notes
-      ? `Notes · row_id: ${entry.id}:`
-      : "Notes:";
+    notesTitle.textContent = "Notes:";
     noteText.className = "paper-note-text";
     const commentLikes = block.commentLikedBy?.length
       ? `\nLiked by ${block.commentLikedBy.join(", ")}`
@@ -2335,12 +2305,6 @@ parentNotesList.addEventListener("click", async (event) => {
   const item = event.target.closest(".parent-note-item");
   if (!item) return;
 
-  const trackingButton = event.target.closest(".tracking-reference");
-  if (trackingButton) {
-    await copyTrackingId(trackingButton);
-    return;
-  }
-
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
     setParentNoteEditState(item, true);
@@ -2396,12 +2360,6 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 });
 blocksContainer.addEventListener("click", async (event) => {
-  const trackingButton = event.target.closest(".tracking-reference");
-  if (trackingButton) {
-    await copyTrackingId(trackingButton);
-    return;
-  }
-
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
     const block = dictationButton.closest(".day-block");
