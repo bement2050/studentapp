@@ -500,6 +500,7 @@ function showJournal(user) {
     });
     updateParentNoteItems();
   }
+  updateReplyingAsLabels();
 }
 
 function showLogin() {
@@ -524,6 +525,10 @@ async function signIn(event) {
   }
 
   localStorage.setItem(USERNAME_STORAGE_KEY, user.username);
+  // Keep exactly one active auth record so an older remembered account can
+  // never override the user who just signed in for this browser session.
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  sessionStorage.removeItem(AUTH_STORAGE_KEY);
   if (rememberLogin.checked) {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ username: user.username, credentialVersion: user.credentialVersion }));
   } else {
@@ -534,7 +539,7 @@ async function signIn(event) {
 }
 
 function restoreSignedInUser() {
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY) || sessionStorage.getItem(AUTH_STORAGE_KEY);
+  const raw = sessionStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(AUTH_STORAGE_KEY);
   if (!raw) return false;
   try {
     const saved = JSON.parse(raw);
@@ -1397,10 +1402,18 @@ function createReplyId() {
 }
 
 function currentAuthor() {
+  if (!currentUser) return { author: "", authorUsername: "" };
   return {
     author: displayNameForUser(currentUser),
     authorUsername: currentUser?.username || ""
   };
+}
+
+function updateReplyingAsLabels(root = document) {
+  const signedInName = displayNameForUser(currentUser);
+  root.querySelectorAll(".reply-as").forEach((label) => {
+    label.textContent = signedInName;
+  });
 }
 
 function normalizeReply(reply) {
@@ -1449,7 +1462,7 @@ function renderReplies(section, replies = []) {
     list.appendChild(article);
   });
   list.hidden = section.replies.length === 0;
-  section.querySelector(".reply-as").textContent = displayNameForUser(currentUser) || "signed-in user";
+  updateReplyingAsLabels(section);
 }
 
 function setReplyComposer(section, open) {
@@ -1457,7 +1470,10 @@ function setReplyComposer(section, open) {
   const openButton = section.querySelector(".reply-open");
   composer.hidden = !open;
   openButton.hidden = open;
-  if (open) section.querySelector(".reply-composer textarea").focus();
+  if (open) {
+    updateReplyingAsLabels(section);
+    section.querySelector(".reply-composer textarea").focus();
+  }
 }
 
 async function handleReplyClick(event, section) {
