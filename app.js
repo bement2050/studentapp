@@ -24,6 +24,7 @@ const USERNAME_STORAGE_KEY = "todays-journal-last-username";
 const ACCESS_STATS_KEY = "todays-journal-access-stats";
 const ACCESS_EVENTS_KEY = "todays-journal-access-events";
 const PENDING_ACCESS_KEY = "todays-journal-pending-access";
+const PARENT_NOTE_AUTHORS = new Set(["amamo", "balemayehu"]);
 let currentUser = null;
 let appStarted = false;
 let accessSessionOpen = false;
@@ -78,6 +79,7 @@ const paperRows = document.getElementById("paperRows");
 const paperParentNote = document.getElementById("paperParentNote");
 const parentNotesList = document.getElementById("parentNotesList");
 const addParentNoteBtn = document.getElementById("addParentNoteBtn");
+const parentNoteHelp = document.getElementById("parentNoteHelp");
 const loginScreen = document.getElementById("loginScreen");
 const loginForm = document.getElementById("loginForm");
 const loginUsername = document.getElementById("loginUsername");
@@ -131,6 +133,16 @@ function displayNameForUser(user) {
 
 function canViewStats(user) {
   return Boolean(user && ["admin", "superuser"].includes(user.role));
+}
+
+function canSubmitParentNote(user = currentUser) {
+  return Boolean(user?.username && PARENT_NOTE_AUTHORS.has(user.username.toLowerCase()));
+}
+
+function requireParentNotePermission() {
+  if (canSubmitParentNote()) return true;
+  setStatus("Only Amamo and BAlemayehu can create or edit parent notes");
+  return false;
 }
 
 function readPasswordOverrides() {
@@ -501,6 +513,7 @@ function showJournal(user) {
     updateParentNoteItems();
   }
   updateReplyingAsLabels();
+  updateParentNotePermissions();
 }
 
 function showLogin() {
@@ -1595,20 +1608,45 @@ function updateParentNoteItems() {
     item.classList.toggle("is-empty", !textArea.value.trim());
     updateAmharicButton(item);
     updateParentNoteLikeState(item);
+    applyParentNotePermissions(item);
   });
+}
+
+function applyParentNotePermissions(item) {
+  const allowed = canSubmitParentNote();
+  if (!allowed && item.classList.contains("is-editing")) setParentNoteEditState(item, false);
+  const editing = item.classList.contains("is-editing");
+  item.querySelector(".parent-note-edit").disabled = !allowed || editing;
+  item.querySelector(".parent-note-save").disabled = !allowed || !editing;
+  item.querySelector(".parent-note-remove").disabled = !allowed;
+  item.querySelector(".speech-to-text-btn").disabled = !allowed;
+  if (allowed) updateAmharicButton(item);
+  else item.querySelector(".translate-amharic-btn").disabled = true;
+}
+
+function updateParentNotePermissions() {
+  const allowed = canSubmitParentNote();
+  addParentNoteBtn.disabled = !allowed;
+  addParentNoteBtn.title = allowed ? "Add a parent note" : "Only Amamo and BAlemayehu can add parent notes";
+  parentNoteHelp.textContent = allowed
+    ? "Questions or updates for the team"
+    : "Parent notes can be submitted by Amamo and BAlemayehu";
+  parentNotesList.querySelectorAll(".parent-note-item").forEach(applyParentNotePermissions);
 }
 
 function setParentNoteEditState(item, isEditing) {
   const textArea = item.querySelector(".parent-note-text");
   const editButton = item.querySelector(".parent-note-edit");
   const saveButton = item.querySelector(".parent-note-save");
-  textArea.readOnly = !isEditing;
-  item.classList.toggle("is-editing", isEditing);
-  editButton.disabled = isEditing;
-  saveButton.disabled = !isEditing;
+  const allowed = canSubmitParentNote();
+  const editing = allowed && isEditing;
+  textArea.readOnly = !editing;
+  item.classList.toggle("is-editing", editing);
+  editButton.disabled = !allowed || editing;
+  saveButton.disabled = !allowed || !editing;
   autoResizeNote(textArea);
 
-  if (isEditing) {
+  if (editing) {
     const at = textArea.value.length;
     textArea.focus();
     textArea.setSelectionRange(at, at);
@@ -2401,6 +2439,7 @@ function restoreScreenLayout() {
 
 printBtn.addEventListener("click", printCurrentDay);
 addParentNoteBtn.addEventListener("click", () => {
+  if (!requireParentNotePermission()) return;
   createParentNoteItem("", { editing: true });
   setStatus("New parent note ready to edit");
 });
@@ -2502,6 +2541,7 @@ parentNotesList.addEventListener("click", async (event) => {
 
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
+    if (!requireParentNotePermission()) return;
     setParentNoteEditState(item, true);
     await toggleDictation(dictationButton, item);
     return;
@@ -2509,6 +2549,7 @@ parentNotesList.addEventListener("click", async (event) => {
 
   const translateButton = event.target.closest(".translate-amharic-btn");
   if (translateButton) {
+    if (!requireParentNotePermission()) return;
     setParentNoteEditState(item, true);
     await translateToAmharic(translateButton, item);
     return;
@@ -2530,12 +2571,14 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 
   if (event.target.closest(".parent-note-edit")) {
+    if (!requireParentNotePermission()) return;
     setParentNoteEditState(item, true);
     setStatus("Parent note unlocked for editing");
     return;
   }
 
   if (event.target.closest(".parent-note-remove")) {
+    if (!requireParentNotePermission()) return;
     item.remove();
     formIsDirty = true;
     formChangeVersion += 1;
@@ -2546,6 +2589,7 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 
   if (event.target.closest(".parent-note-save")) {
+    if (!requireParentNotePermission()) return;
     const textArea = item.querySelector(".parent-note-text");
     if (!textArea.value.trim()) item.remove();
     else {

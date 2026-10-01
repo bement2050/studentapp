@@ -595,6 +595,13 @@ button:focus-visible {
   color: #fff;
 }
 
+.parent-note-add:disabled,
+.parent-note-remove:disabled,
+.parent-note-item-actions button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 .parent-note-remove {
   border-color: transparent;
   background: transparent;
