@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Nunito:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=55" />
+    <link rel="stylesheet" href="styles.css?v=56" />
   </head>
   <body class="is-authenticating">
     <section id="loginScreen" class="login-screen" aria-labelledby="loginTitle">
@@ -219,10 +219,12 @@
               <button type="button" class="note-save-btn" aria-label="Save notes" disabled>Save</button>
             </span>
           </span>
-          <textarea rows="4" placeholder="What happened during this part of the day?" readonly></textarea>
+          <textarea class="checkin-note-text" rows="4" placeholder="What happened during this part of the day?" readonly></textarea>
           <span class="speech-to-text-status" aria-live="polite"></span>
           <span class="character-count">0 characters</span>
         </label>
+
+        <div class="note-author" hidden></div>
 
         <div class="comment-reactions" aria-label="Parent reaction to this comment">
           <span class="reaction-copy">
@@ -236,6 +238,8 @@
             </button>
           </div>
         </div>
+
+        <section class="reply-section" aria-label="Replies to this daily check-in"></section>
 
         <section class="photo-section" aria-label="Photos from this part of the day">
           <div class="photo-heading">
@@ -323,6 +327,6 @@
       </form>
     </dialog>
 
-    <script src="app.js?v=55"></script>
+    <script src="app.js?v=56"></script>
   </body>
 </html>

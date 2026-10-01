@@ -905,11 +905,12 @@ function mapSupabaseRowToEntry(row) {
     if (blockIndex === 0 && Array.isArray(block.parentNotes)) {
       normalizedBlock.parentNotes = block.parentNotes.map((note, noteIndex) => {
         if (typeof note === "string") {
-          return { id: row.id, text: note, likedBy: [] };
+          return { id: legacyParentNoteId(row.id, noteIndex), text: note, likedBy: [], replies: [] };
         }
         return {
           ...note,
-          id: row.id
+          id: note.id || legacyParentNoteId(row.id, noteIndex),
+          replies: normalizedReplies(note.replies)
         };
       });
     }
@@ -1343,7 +1344,7 @@ async function toggleDictation(button, container) {
 }
 
 function setNoteEditState(block, isEditing) {
-  const textArea = block.querySelector("textarea");
+  const textArea = block.querySelector(".checkin-note-text");
   const editButton = block.querySelector(".note-edit-btn");
   const saveButton = block.querySelector(".note-save-btn");
   if (!textArea || !editButton || !saveButton) return;
@@ -1390,6 +1391,106 @@ function createCommentId() {
   return `TC-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function createReplyId() {
+  if (window.crypto?.randomUUID) return `RP-${window.crypto.randomUUID()}`;
+  return `RP-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function currentAuthor() {
+  return {
+    author: displayNameForUser(currentUser),
+    authorUsername: currentUser?.username || ""
+  };
+}
+
+function normalizeReply(reply) {
+  if (typeof reply === "string") {
+    return { id: createReplyId(), text: reply, author: "", authorUsername: "", createdAt: "" };
+  }
+  return {
+    id: reply?.id || createReplyId(),
+    text: String(reply?.text || ""),
+    author: String(reply?.author || ""),
+    authorUsername: String(reply?.authorUsername || ""),
+    createdAt: String(reply?.createdAt || "")
+  };
+}
+
+function normalizedReplies(replies) {
+  return Array.isArray(replies)
+    ? replies.map(normalizeReply).filter((reply) => reply.text.trim())
+    : [];
+}
+
+function renderReplies(section, replies = []) {
+  if (!section) return;
+  section.replies = normalizedReplies(replies);
+  section.innerHTML = `
+    <div class="reply-list"></div>
+    <button type="button" class="reply-open">Reply</button>
+    <div class="reply-composer" hidden>
+      <label><span>Replying as <strong class="reply-as"></strong></span>
+        <textarea rows="2" maxlength="600" placeholder="Write a reply..."></textarea>
+      </label>
+      <div class="reply-composer-actions">
+        <button type="button" class="reply-cancel">Cancel</button>
+        <button type="button" class="reply-send">Send reply</button>
+      </div>
+    </div>`;
+  const list = section.querySelector(".reply-list");
+  section.replies.forEach((reply) => {
+    const article = document.createElement("article");
+    article.className = "reply-item";
+    const meta = document.createElement("strong");
+    meta.textContent = reply.author || reply.authorUsername || "Reply";
+    const text = document.createElement("p");
+    text.textContent = reply.text;
+    article.append(meta, text);
+    list.appendChild(article);
+  });
+  list.hidden = section.replies.length === 0;
+  section.querySelector(".reply-as").textContent = displayNameForUser(currentUser) || "signed-in user";
+}
+
+function setReplyComposer(section, open) {
+  const composer = section.querySelector(".reply-composer");
+  const openButton = section.querySelector(".reply-open");
+  composer.hidden = !open;
+  openButton.hidden = open;
+  if (open) section.querySelector(".reply-composer textarea").focus();
+}
+
+async function handleReplyClick(event, section) {
+  if (event.target.closest(".reply-open")) {
+    setReplyComposer(section, true);
+    return true;
+  }
+  if (event.target.closest(".reply-cancel")) {
+    section.querySelector(".reply-composer textarea").value = "";
+    setReplyComposer(section, false);
+    return true;
+  }
+  if (event.target.closest(".reply-send")) {
+    const textArea = section.querySelector(".reply-composer textarea");
+    const text = textArea.value.trim();
+    if (!text) {
+      textArea.focus();
+      return true;
+    }
+    section.replies = [
+      ...(Array.isArray(section.replies) ? section.replies : []),
+      { id: createReplyId(), text, ...currentAuthor(), createdAt: new Date().toISOString() }
+    ];
+    renderReplies(section, section.replies);
+    formIsDirty = true;
+    formChangeVersion += 1;
+    const saved = await persistCurrentForm({ manual: true });
+    if (saved) setStatus(`✓ Reply added by ${displayNameForUser(currentUser)}`);
+    return true;
+  }
+  return false;
+}
+
 function trackingHash(value) {
   let hash = 2166136261;
   for (const character of String(value || "")) {
@@ -1422,7 +1523,7 @@ function currentRowId() {
 
 function normalizeParentNote(note) {
   if (typeof note === "string") {
-    return { id: createParentNoteId(), text: note, likedBy: [] };
+    return { id: createParentNoteId(), text: note, likedBy: [], author: "", authorUsername: "", replies: [] };
   }
 
   const likedBy = Array.isArray(note?.likedBy)
@@ -1431,16 +1532,22 @@ function normalizeParentNote(note) {
   return {
     id: note?.id || createParentNoteId(),
     text: String(note?.text || ""),
-    likedBy
+    likedBy,
+    author: String(note?.author || ""),
+    authorUsername: String(note?.authorUsername || ""),
+    replies: normalizedReplies(note?.replies)
   };
 }
 
 function parentNoteValues(rowId = currentRowId()) {
   return [...parentNotesList.querySelectorAll(".parent-note-item")]
     .map((item) => ({
-      id: rowId,
-      text: noteTextForPersistence(item.querySelector("textarea")),
-      likedBy: Array.isArray(item.likedBy) ? item.likedBy : []
+      id: item.dataset.noteId || rowId,
+      text: noteTextForPersistence(item.querySelector(".parent-note-text")),
+      likedBy: Array.isArray(item.likedBy) ? item.likedBy : [],
+      author: item.noteAuthor || "",
+      authorUsername: item.noteAuthorUsername || "",
+      replies: normalizedReplies(item.querySelector(".reply-section")?.replies)
     }))
     .filter((note) => note.text);
 }
@@ -1465,7 +1572,7 @@ function updateParentNoteItems() {
   const items = [...parentNotesList.querySelectorAll(".parent-note-item")];
   items.forEach((item, index) => {
     const title = item.querySelector(".parent-note-item-title");
-    const textArea = item.querySelector("textarea");
+    const textArea = item.querySelector(".parent-note-text");
     const count = item.querySelector(".parent-note-count");
     title.textContent = `Parent note ${index + 1}`;
     count.textContent = `${textArea.value.length} / 1000`;
@@ -1476,7 +1583,7 @@ function updateParentNoteItems() {
 }
 
 function setParentNoteEditState(item, isEditing) {
-  const textArea = item.querySelector("textarea");
+  const textArea = item.querySelector(".parent-note-text");
   const editButton = item.querySelector(".parent-note-edit");
   const saveButton = item.querySelector(".parent-note-save");
   textArea.readOnly = !isEditing;
@@ -1498,7 +1605,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
   item.className = "parent-note-item";
   item.innerHTML = `
     <div class="parent-note-item-header">
-      <strong class="parent-note-item-title"></strong>
+      <span><strong class="parent-note-item-title"></strong><small class="note-author" hidden></small></span>
       <div class="parent-note-item-actions">
         <button type="button" class="speech-to-text-btn" aria-label="Start voice typing" title="Start voice typing"><span aria-hidden="true">&#127908;</span><span class="speech-to-text-label">Voice to text</span></button>
         <button type="button" class="translate-amharic-btn" aria-label="Translate parent note to Amharic" aria-pressed="false" title="Enter text to translate to Amharic" disabled>አማርኛ</button>
@@ -1509,7 +1616,7 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
     </div>
     <label class="parent-note-field">
       <span class="sr-only">Parent note</span>
-      <textarea rows="3" maxlength="1000" placeholder="Write a note about today..."></textarea>
+      <textarea class="parent-note-text" rows="3" maxlength="1000" placeholder="Write a note about today..."></textarea>
     </label>
     <span class="speech-to-text-status" aria-live="polite"></span>
     <span class="parent-note-count">0 / 1000</span>
@@ -1519,11 +1626,18 @@ function createParentNoteItem(note = "", { editing = false } = {}) {
         <span>Like</span>
       </button>
       <span class="parent-note-liked-by" hidden></span>
-    </div>`;
-  const textArea = item.querySelector("textarea");
+    </div>
+    <section class="reply-section" aria-label="Replies to this parent note"></section>`;
+  const textArea = item.querySelector(".parent-note-text");
+  const authorLabel = item.querySelector(".note-author");
   item.dataset.noteId = record.id;
   item.likedBy = record.likedBy;
+  item.noteAuthor = record.author || (editing ? currentAuthor().author : "");
+  item.noteAuthorUsername = record.authorUsername || (editing ? currentAuthor().authorUsername : "");
+  authorLabel.textContent = item.noteAuthor ? `By ${item.noteAuthor}` : "";
+  authorLabel.hidden = !item.noteAuthor;
   textArea.value = record.text;
+  renderReplies(item.querySelector(".reply-section"), record.replies);
   parentNotesList.appendChild(item);
   updateParentNoteItems();
   setParentNoteEditState(item, editing);
@@ -1539,6 +1653,21 @@ function renderParentNotes(notes = []) {
 }
 
 async function saveBlockNote(block) {
+  const textArea = block.querySelector(".checkin-note-text");
+  if (!textArea.value.trim()) {
+    block.noteAuthor = "";
+    block.noteAuthorUsername = "";
+    const authorLabel = block.querySelector(".note-author");
+    authorLabel.textContent = "";
+    authorLabel.hidden = true;
+  } else if (!block.noteAuthor) {
+    const author = currentAuthor();
+    block.noteAuthor = author.author;
+    block.noteAuthorUsername = author.authorUsername;
+    const authorLabel = block.querySelector(".note-author");
+    authorLabel.textContent = `By ${author.author}`;
+    authorLabel.hidden = false;
+  }
   setNoteEditState(block, false);
   updateFormProgress();
   return persistCurrentForm({ manual: true });
@@ -1552,7 +1681,7 @@ function createBlocks() {
     const article = clone.querySelector(".day-block");
     const blockTitle = clone.querySelector(".block-title");
     const badge = clone.querySelector(".badge");
-    const textArea = clone.querySelector("textarea");
+    const textArea = clone.querySelector(".checkin-note-text");
     const editButton = clone.querySelector(".note-edit-btn");
     const saveButton = clone.querySelector(".note-save-btn");
     blockTitle.textContent = title;
@@ -1569,6 +1698,7 @@ function createBlocks() {
     });
 
     setBlockLikes(article);
+    renderReplies(article.querySelector(".reply-section"));
 
     article.dataset.blockIndex = String(index);
     blocksContainer.appendChild(clone);
@@ -1586,7 +1716,7 @@ function readCurrentForm() {
       ...block.querySelectorAll('.activity-row input[type="checkbox"]:checked')
     ];
 
-    const noteText = noteTextForPersistence(block.querySelector("textarea"));
+    const noteText = noteTextForPersistence(block.querySelector(".checkin-note-text"));
     block.dataset.commentId = noteText ? rowId : "";
 
     return {
@@ -1597,6 +1727,9 @@ function readCurrentForm() {
       notes: noteText,
       commentId: noteText ? rowId : "",
       commentLikedBy: Array.isArray(block.commentLikedBy) ? block.commentLikedBy : [],
+      noteAuthor: noteText ? block.noteAuthor || "" : "",
+      noteAuthorUsername: noteText ? block.noteAuthorUsername || "" : "",
+      replies: normalizedReplies(block.querySelector(".reply-section")?.replies),
       ...(index === 0 ? { parentNotes } : {}),
       speech: block.querySelector(".speech").checked,
       ot: block.querySelector(".ot").checked
@@ -1644,12 +1777,18 @@ function writeForm(entry) {
         || false;
     });
 
-    const noteField = element.querySelector("textarea");
+    const noteField = element.querySelector(".checkin-note-text");
     noteField.value = block.notes || "";
     element.dataset.commentId = block.notes
       ? block.commentId || legacyCommentId(entry.id, i)
       : "";
     setBlockLikes(element, block.commentLikedBy || []);
+    element.noteAuthor = String(block.noteAuthor || "");
+    element.noteAuthorUsername = String(block.noteAuthorUsername || "");
+    const authorLabel = element.querySelector(".note-author");
+    authorLabel.textContent = element.noteAuthor ? `By ${element.noteAuthor}` : "";
+    authorLabel.hidden = !element.noteAuthor;
+    renderReplies(element.querySelector(".reply-section"), block.replies || []);
     setNoteEditState(element, false);
     element.querySelector(".speech").checked = Boolean(block.speech);
     element.querySelector(".ot").checked = Boolean(block.ot);
@@ -1682,11 +1821,17 @@ function clearForm(keepHeader = false) {
     check.checked = false;
   });
 
-  document.querySelectorAll(".day-block textarea").forEach((textArea) => {
+  document.querySelectorAll(".day-block .checkin-note-text").forEach((textArea) => {
     textArea.value = "";
     const block = textArea.closest(".day-block");
     if (block) {
       block.dataset.commentId = "";
+      block.noteAuthor = "";
+      block.noteAuthorUsername = "";
+      const authorLabel = block.querySelector(".note-author");
+      authorLabel.textContent = "";
+      authorLabel.hidden = true;
+      renderReplies(block.querySelector(".reply-section"));
       setNoteEditState(block, false);
     }
   });
@@ -1708,12 +1853,13 @@ function updateFormProgress() {
   const blocks = [...document.querySelectorAll(".day-block")];
 
   blocks.forEach((block) => {
-    const note = block.querySelector("textarea");
+    const note = block.querySelector(".checkin-note-text");
     autoResizeNote(note);
     const hasContent = Boolean(
       block.querySelector(".mood-row input:checked")
       || block.querySelector('input[type="checkbox"]:checked')
       || note.value.trim()
+      || block.querySelector(".reply-section")?.replies?.length
     );
     block.classList.toggle("has-content", hasContent);
 
@@ -1731,7 +1877,7 @@ function updateFormProgress() {
 
 function fillHolidayDay(event) {
   document.querySelectorAll(".day-block").forEach((block, index) => {
-    const noteField = block.querySelector("textarea");
+    const noteField = block.querySelector(".checkin-note-text");
     noteField.value = index === 0
       ? `${event.title} - ${event.description}`
       : "No school.";
@@ -2016,7 +2162,7 @@ async function renderHistory() {
     const actions = document.createElement("div");
     const date = new Date(`${entry.date}T12:00:00`);
     const started = (entry.blocks || []).filter((block) =>
-      block.mood || block.moods?.length || block.notes || block.speech || block.ot || block.activities?.length
+      block.mood || block.moods?.length || block.notes || block.replies?.length || block.speech || block.ot || block.activities?.length
     ).length;
     dateBadge.className = "history-date-badge";
     dateBadge.dateTime = entry.date;
@@ -2128,7 +2274,11 @@ function preparePrintLayout() {
   paperParentNote.textContent = printParentNotes.length
     ? printParentNotes.map((note, index) => {
       const likedBy = note.likedBy?.length ? ` (Liked by ${note.likedBy.join(", ")})` : "";
-      return `${index + 1}. ${note.text}${likedBy}`;
+      const author = note.author ? ` — ${note.author}` : "";
+      const replies = note.replies?.length
+        ? `\n${note.replies.map((reply) => `   Reply from ${reply.author || reply.authorUsername || "Unknown"}: ${reply.text}`).join("\n")}`
+        : "";
+      return `${index + 1}. ${note.text}${author}${likedBy}${replies}`;
     }).join("\n")
     : "No parent note added.";
   paperRows.innerHTML = "";
@@ -2201,7 +2351,11 @@ function preparePrintLayout() {
     const commentLikes = block.commentLikedBy?.length
       ? `\nLiked by ${block.commentLikedBy.join(", ")}`
       : "";
-    noteText.textContent = `${block.notes || ""}${commentLikes}`;
+    const noteAuthor = block.noteAuthor ? `\nBy ${block.noteAuthor}` : "";
+    const replies = block.replies?.length
+      ? `\n${block.replies.map((reply) => `Reply from ${reply.author || reply.authorUsername || "Unknown"}: ${reply.text}`).join("\n")}`
+      : "";
+    noteText.textContent = `${block.notes || ""}${noteAuthor}${commentLikes}${replies}`;
     supports.className = "paper-supports";
     supports.textContent = `${block.speech ? "☒" : "☐"} speech     ${block.ot ? "☒" : "☐"} O.T.`;
     notesPanel.append(notesTitle, noteText);
@@ -2280,7 +2434,20 @@ todayBtn.addEventListener("click", () => openDate(todayISO()));
 entryDateInput.addEventListener("change", () => openDate(entryDateInput.value));
 document.querySelector(".app-shell").addEventListener("input", (event) => {
   if (event.target.matches("#childName")) updateFormProgress();
-  if (event.target.matches(".parent-note-item textarea")) {
+  if (event.target.matches(".reply-composer textarea")) {
+    autoResizeNote(event.target);
+    return;
+  }
+  if (event.target.matches(".parent-note-text")) {
+    const item = event.target.closest(".parent-note-item");
+    if (event.target.value.trim() && item && !item.noteAuthor) {
+      const author = currentAuthor();
+      item.noteAuthor = author.author;
+      item.noteAuthorUsername = author.authorUsername;
+      const authorLabel = item.querySelector(".note-author");
+      authorLabel.textContent = `By ${author.author}`;
+      authorLabel.hidden = false;
+    }
     formIsDirty = true;
     formChangeVersion += 1;
     autoResizeNote(event.target);
@@ -2288,7 +2455,16 @@ document.querySelector(".app-shell").addEventListener("input", (event) => {
     setStatus("Editing parent note... tap Save when done");
     return;
   }
-  if (event.target.matches(".day-block textarea")) {
+  if (event.target.matches(".checkin-note-text")) {
+    const block = event.target.closest(".day-block");
+    if (event.target.value.trim() && block && !block.noteAuthor) {
+      const author = currentAuthor();
+      block.noteAuthor = author.author;
+      block.noteAuthorUsername = author.authorUsername;
+      const authorLabel = block.querySelector(".note-author");
+      authorLabel.textContent = `By ${author.author}`;
+      authorLabel.hidden = false;
+    }
     formIsDirty = true;
     formChangeVersion += 1;
     autoResizeNote(event.target);
@@ -2304,6 +2480,9 @@ document.querySelector(".app-shell").addEventListener("change", (event) => {
 parentNotesList.addEventListener("click", async (event) => {
   const item = event.target.closest(".parent-note-item");
   if (!item) return;
+
+  const replySection = event.target.closest(".reply-section");
+  if (replySection && await handleReplyClick(event, replySection)) return;
 
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
@@ -2351,15 +2530,28 @@ parentNotesList.addEventListener("click", async (event) => {
   }
 
   if (event.target.closest(".parent-note-save")) {
-    const textArea = item.querySelector("textarea");
+    const textArea = item.querySelector(".parent-note-text");
     if (!textArea.value.trim()) item.remove();
-    else setParentNoteEditState(item, false);
+    else {
+      if (!item.noteAuthor) {
+        const author = currentAuthor();
+        item.noteAuthor = author.author;
+        item.noteAuthorUsername = author.authorUsername;
+        const authorLabel = item.querySelector(".note-author");
+        authorLabel.textContent = `By ${author.author}`;
+        authorLabel.hidden = false;
+      }
+      setParentNoteEditState(item, false);
+    }
     updateParentNoteItems();
     const saved = await persistCurrentForm({ manual: true });
     if (saved) setStatus("✓ Parent note saved");
   }
 });
 blocksContainer.addEventListener("click", async (event) => {
+  const replySection = event.target.closest(".reply-section");
+  if (replySection && await handleReplyClick(event, replySection)) return;
+
   const dictationButton = event.target.closest(".speech-to-text-btn");
   if (dictationButton) {
     const block = dictationButton.closest(".day-block");
